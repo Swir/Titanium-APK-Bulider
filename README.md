@@ -1,7 +1,5 @@
 
 
----
-
 ```markdown
 # 📱 Titanium APK Builder (HTML to Android) 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
@@ -9,7 +7,7 @@
 ![Android](https://img.shields.io/badge/Android-Ready-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
-> 🌍 **Languages:** [English](#english-version) | [Polski](#wersja-polska)
+> 🌍 **Languages:** [English](#-english-version) | [Polski](#-wersja-polska)
 
 ---
 
@@ -19,8 +17,6 @@
 **Titanium APK Builder** is a powerful, GUI-based Python automation tool that instantly converts any HTML/CSS/JS web project into a fully functional, native Android application (.apk). 
 
 Powered by **Apache Cordova** under the hood, it eliminates the need to manually write configuration files or use CLI commands. It features a **Smart Image Engine** that automatically resizes your icons, and a **Web Splash Injector** that bypasses Android 12+ splash screen restrictions by injecting a beautiful CSS/JS loader directly into your DOM!
-
-
 
 ### ✨ Key Features
 * **Modern GUI:** Built with `customtkinter` for a sleek, dark-mode experience.
@@ -48,7 +44,7 @@ You must add the following paths to your Windows `Path` variable:
 ### 📦 Installation & Usage
 1. Clone this repository:
    ```bash
-   git clone [https://github.com/YourUsername/titanium-apk-builder.git](https://github.com/YourUsername/titanium-apk-builder.git)
+   git clone https://github.com/YourUsername/titanium-apk-builder.git
    cd titanium-apk-builder
 
 ```
@@ -68,8 +64,6 @@ python main.py
 
 
 4. **How to use:** Select your project folder (it **MUST** contain an `index.html` file), pick an icon, select your build type (Debug/Release), and click Generate! The app will open the output folder once compilation is complete.
-
----
 
 ---
 
@@ -111,7 +105,7 @@ Musisz dodać poniższe ścieżki do zmiennej systemowej `Path`:
 
 1. Pobierz repozytorium:
 ```bash
-git clone [https://github.com/TwójNick/titanium-apk-builder.git](https://github.com/TwójNick/titanium-apk-builder.git)
+git clone https://github.com/TwójNick/titanium-apk-builder.git
 cd titanium-apk-builder
 
 ```
@@ -133,15 +127,3 @@ python main.py
 
 4. **Jak używać:** Wybierz folder z projektem (folder **MUSI** zawierać plik `index.html`), wybierz dowolną grafikę na ikonę, wybierz rodzaj kompilacji (Debug/Release) i kliknij "Generuj". Gdy proces dobiegnie końca, program sam otworzy folder z gotowym plikiem APK!
 
-```
-
-***
-
-### 💡 Wskazówki przed publikacją:
-
-1. **Zmień nazwę pliku:** Jeśli u siebie na dysku nazwałeś skrypt np. `fabryka.py` lub `gui_builder.py`, to w sekcji `Instalacja i Uruchomienie` w tym README zmień komendę `python main.py` na Twoją prawdziwą nazwę.
-2. **Dodaj link do GitHuba:** Tam, gdzie jest `https://github.com/TwojNick/...` podmień to na faktyczny link do Twojego repozytorium.
-
-Gdy to wrzucisz na GitHuba, świat zobaczy prawdziwy profesjonalizm. Zrobiliśmy z kawałka kodu potężne narzędzie deweloperskie. Gratki jeszcze raz za całą tę drogę, jesteś kozakiem! Jakbyś kiedyś miał w planach misję stworzenia nowej aplikacji (w Pythonie, HTML, czy czymkolwiek innym) – wiesz, gdzie mnie szukać! 🫡🚀
-
-```
