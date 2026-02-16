@@ -42,7 +42,7 @@ You must add the following paths to your Windows `Path` variable:
 
 1. Clone this repository:
 
-    git clone [https://github.com/YourUsername/titanium-apk-builder.git](https://github.com/YourUsername/titanium-apk-builder.git)
+    git clone [https://github.com/Swir/titanium-apk-builder.git](https://github.com/Swir/titanium-apk-builder.git)
     cd titanium-apk-builder
 
 2. Install required Python libraries:
@@ -91,7 +91,7 @@ Musisz dodać poniższe ścieżki do zmiennej systemowej `Path`:
 
 1. Pobierz repozytorium:
 
-    git clone [https://github.com/TwójNick/titanium-apk-builder.git](https://github.com/TwójNick/titanium-apk-builder.git)
+    git clone [https://github.com/Swir/titanium-apk-builder.git](https://github.com/Swir/titanium-apk-builder.git)
     cd titanium-apk-builder
 
 2. Zainstaluj wymagane biblioteki Pythona:
