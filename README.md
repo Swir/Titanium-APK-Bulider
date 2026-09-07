@@ -1,105 +1,95 @@
-# 📱 Titanium APK Builder (HTML to Android) 
-![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![Cordova](https://img.shields.io/badge/Cordova-13.0+-lightgrey.svg)
-![Android](https://img.shields.io/badge/Android-Ready-green.svg)
-![License](https://img.shields.io/badge/License-MIT-orange.svg)
+<div align="center">
 
-> 🌍 **Languages:** [English](#english-version) | [Polski](#wersja-polska)
+# 📱 Titanium APK Builder
 
----
+**HTML / CSS / JavaScript → Android APK automation GUI**  
+**Automatyczny kreator aplikacji Android z projektów HTML / CSS / JavaScript**
 
-## 🇬🇧 English Version
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Cordova](https://img.shields.io/badge/Apache-Cordova-E8E8E8?logo=apachecordova&logoColor=black)
+![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)
+![UI](https://img.shields.io/badge/UI-CustomTkinter-8A2BE2)
+![Author](https://img.shields.io/badge/Author-Swir-ff4fa3)
 
-### 🚀 About The Project
-**Titanium APK Builder** is a powerful, GUI-based Python automation tool that instantly converts any HTML/CSS/JS web project into a fully functional, native Android application (.apk). 
-
-Powered by **Apache Cordova** under the hood, it eliminates the need to manually write configuration files or use CLI commands. It features a **Smart Image Engine** that automatically resizes your icons, and a **Web Splash Injector** that bypasses Android 12+ splash screen restrictions by injecting a beautiful CSS/JS loader directly into your DOM!
-
-### ✨ Key Features
-* **Modern GUI:** Built with `customtkinter` for a sleek, dark-mode experience.
-* **Smart Image Processing:** Select *any* image format (JPG, WEBP, PNG). The built-in engine (Pillow) auto-crops it to a 512x512 transparent icon.
-* **Android 12+ Splash Screen Fix:** Automatically injects a fade-out CSS loader into your `index.html` to prevent the ugly default white Android splash screen.
-* **Hardware Permissions:** 1-click injection of Cordova plugins (Camera, GPS, Storage).
-* **Status Bar Theming:** Input a HEX color to dynamically tint the Android status bar to match your web app's background.
-* **Auto-Package Generator:** Cleans your app name and auto-generates a valid Android package name (e.g., `com.yourname.app`).
-
-### 🛠️ Prerequisites (Crucial Step)
-To build Android apps, your system needs the underlying engines installed. Ensure you have the following:
-
-1. **Node.js** (v24 or newer)
-2. **Apache Cordova** (Install via terminal: `npm install -g cordova`)
-3. **Java JDK 17** (Adoptium Temurin recommended. *Note: Ensure JAVA_HOME is set during installation!*)
-4. **Android Studio** (Install the SDK, and specifically **SDK Build-Tools 35.0.0** via the SDK Manager).
-5. **Gradle** (v8.x or v9.x).
-
-**⚠️ Windows Environment Variables Setup:**
-You must add the following paths to your Windows `Path` variable:
-* `%ANDROID_HOME%\platform-tools`
-* `%ANDROID_HOME%\cmdline-tools\latest\bin`
-* `C:\Path\To\Your\gradle\bin`
-
-### 📦 Installation & Usage
-
-1. Clone this repository:
-
-    git clone [https://github.com/Swir/Titanium-APK-Bulider.git](https://github.com/Swir/Titanium-APK-Bulider.git)
-    cd titanium-apk-builder
-
-2. Install required Python libraries:
-
-    pip install customtkinter Pillow
-
-3. Run the application:
-
-    python main.py
-
-4. **How to use:** Select your project folder (it **MUST** contain an `index.html` file), pick an icon, select your build type (Debug/Release), and click Generate! The app will open the output folder once compilation is complete.
+</div>
 
 ---
 
-## 🇵🇱 Wersja Polska
+## 🇬🇧 English
 
-### 🚀 O Projekcie
-**Titanium APK Builder** to potężne narzędzie z graficznym interfejsem (GUI) napisane w Pythonie, które błyskawicznie konwertuje dowolny projekt webowy (HTML/CSS/JS) w pełnoprawną, natywną aplikację na Androida (.apk).
+Titanium APK Builder is a Python GUI automation tool for turning HTML/CSS/JavaScript projects into Android applications using Apache Cordova. It automates repetitive project setup and build steps and provides convenient controls for application identity, graphics and Android-oriented options.
 
-Program bazuje na silniku **Apache Cordova**, ale całkowicie eliminuje konieczność ręcznej zabawy w terminalu. Wyposażony jest w **Smart Image Engine**, który sam docina ikony, oraz **Web Splash Injector**, który omija blokady ekranów powitalnych w systemie Android 12+, wstrzykując piękny, animowany ekran ładowania prosto do Twojego kodu!
+### ✨ Highlights
+- modern CustomTkinter GUI
+- Cordova project/build automation
+- HTML/CSS/JS project input
+- icon processing with Pillow
+- Android splash-screen helper/injection workflow
+- Android hardware/plugin options
+- status-bar theming
+- automatic Android package-name generation
+- Debug/Release-oriented build workflow
 
-### ✨ Główne Funkcje
-* **Nowoczesny Interfejs:** Zbudowany w oparciu o `customtkinter` (ciemny motyw).
-* **Inteligentne Przetwarzanie Grafik:** Wybierz *dowolny* format (JPG, WEBP, PNG). Silnik (Pillow) sam wykadruje obraz do idealnej ikony 512x512.
-* **Fix na Splash Screen (Android 12+):** Automatycznie wstrzykuje animowany "spinner" (CSS/JS) do pliku `index.html`, eliminując brzydki, domyślny biały ekran Androida.
-* **Uprawnienia Sprzętowe:** Dodawaj obsługę aparatu, GPS i pamięci jednym kliknięciem.
-* **Kolorowanie Paska Statusu:** Wpisz kod HEX, aby górny pasek telefonu (tam gdzie bateria) przyjął kolor Twojej aplikacji.
-* **Auto-Generator Pakietów:** Program sam czyści nazwę apki i tworzy poprawny pakiet.
+### 🛠 Prerequisites
+A working Android/Cordova build environment is required. Depending on your setup this normally includes Python, Node.js, Apache Cordova, JDK, Android SDK/Android Studio and Gradle.
 
-### 🛠️ Wymagania Systemowe (Bardzo Ważne)
-Aby Python mógł zbudować aplikację, Twój system (Windows) musi posiadać zainstalowane poniższe silniki:
+Python dependencies:
+```bash
+pip install customtkinter Pillow
+```
 
-1. **Node.js** (v24 lub nowszy)
-2. **Apache Cordova** (Zainstaluj w terminalu wpisując: `npm install -g cordova`)
-3. **Java JDK 17** (Zalecane Adoptium Temurin. *Uwaga: Upewnij się, że zaznaczyłeś opcję dodania JAVA_HOME podczas instalacji!*)
-4. **Android Studio** (Zainstaluj SDK, a w szczególności **SDK Build-Tools w wersji 35.0.0** w menedżerze SDK).
-5. **Gradle** (wersja 8.x lub 9.x).
+Run the version currently included in this repository:
+```bash
+python "Titanium V9.py"
+```
 
-**⚠️ Zmienne Środowiskowe (Windows):**
-Musisz dodać poniższe ścieżki do zmiennej systemowej `Path`:
-* `%ANDROID_HOME%\platform-tools`
-* `%ANDROID_HOME%\cmdline-tools\latest\bin`
-* `C:\Ścieżka\Do\Twojego\gradle\bin`
+Select a web-project directory containing `index.html`, configure the application and start the build from the GUI.
 
-### 📦 Instalacja i Uruchomienie
+---
 
-1. Pobierz repozytorium:
+## 🇵🇱 Polski
 
-    git clone [https://github.com/Swir/Titanium-APK-Bulider.git](https://github.com/Swir/Titanium-APK-Bulider.git)
-    cd titanium-apk-builder
+Titanium APK Builder to graficzne narzędzie automatyzujące tworzenie aplikacji Android z projektów HTML/CSS/JavaScript przy użyciu Apache Cordova. Program upraszcza powtarzalne etapy konfiguracji i kompilacji oraz udostępnia wygodne opcje dotyczące nazwy aplikacji, grafiki i ustawień Androida.
 
-2. Zainstaluj wymagane biblioteki Pythona:
+### ✨ Najważniejsze funkcje
+- nowoczesny interfejs CustomTkinter
+- automatyzacja projektów i kompilacji Cordova
+- obsługa projektów HTML/CSS/JS
+- przetwarzanie ikon przez Pillow
+- mechanizm pomocniczy dla splash screen Android
+- opcje pluginów/uprawnień sprzętowych
+- ustawianie wyglądu paska statusu
+- automatyczne generowanie nazwy pakietu Android
+- workflow dla kompilacji Debug/Release
 
-    pip install customtkinter Pillow
+### 🛠 Wymagania
+Potrzebne jest działające środowisko kompilacji Android/Cordova. Zależnie od konfiguracji obejmuje ono zwykle Python, Node.js, Apache Cordova, JDK, Android SDK/Android Studio oraz Gradle.
 
-3. Uruchom program:
+Zależności Pythona:
+```bash
+pip install customtkinter Pillow
+```
 
-    python main.py
+Uruchomienie wersji znajdującej się obecnie w repozytorium:
+```bash
+python "Titanium V9.py"
+```
 
-4. **Jak używać:** Wybierz folder z projektem (folder **MUSI** zawierać plik `index.html`), wybierz dowolną grafikę na ikonę, wybierz rodzaj kompilacji (Debug/Release) i kliknij "Generuj". Gdy proces dobiegnie końca, program sam otworzy folder z gotowym plikiem APK!
+Wskaż katalog projektu zawierający `index.html`, skonfiguruj aplikację i uruchom proces budowania z poziomu GUI.
+
+---
+
+## 📁 Repository / Repozytorium
+```text
+Titanium-APK-Bulider/
+├── Titanium V9.py
+└── README.md
+```
+
+## ⚠️ Notes / Uwagi
+Android toolchains change over time. If a build fails, verify that Cordova, JDK, Android SDK Build Tools and Gradle versions are mutually compatible.
+
+Środowisko Android zmienia się z czasem. W razie problemów sprawdź zgodność wersji Cordova, JDK, Android SDK Build Tools i Gradle.
+
+## 👤 Author / Autor
+Developed by **Swir**.
