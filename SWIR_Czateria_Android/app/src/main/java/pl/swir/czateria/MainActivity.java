@@ -64,7 +64,7 @@ public class MainActivity extends Activity {
         root.addView(buildTopBar());
 
         statusText = new TextView(this);
-        statusText.setText("SWIR Czateria+ v0.4 • uruchamianie");
+        statusText.setText("SWIR Czateria+ v0.5 • uruchamianie");
         statusText.setTextColor(Color.rgb(148, 178, 200));
         statusText.setTextSize(10.5f);
         statusText.setPadding(dp(10), dp(4), dp(10), dp(4));
@@ -215,11 +215,11 @@ public class MainActivity extends Activity {
                 webView.evaluateJavascript(swirScript, baseResult ->
                         webView.evaluateJavascript(patchScript, patchResult ->
                                 webView.evaluateJavascript(patchV04Script, v04Result ->
-                                        statusText.setText("✅ SWIR v0.4 • GIF→KOD • KOLOROWE NICKI • NO ADS • Friend 85→159"))));
+                                        statusText.setText("✅ SWIR v0.5 • GIF→KOD • KOLOROWE NICKI • NO ADS • Friend 85→159"))));
             } else if (result.contains("ALREADY")) {
                 webView.evaluateJavascript(patchScript, patchResult ->
                         webView.evaluateJavascript(patchV04Script, null));
-                statusText.setText("✅ SWIR v0.4 aktywny");
+                statusText.setText("✅ SWIR v0.5 aktywny");
             }
         });
     }
