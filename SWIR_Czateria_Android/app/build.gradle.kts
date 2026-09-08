@@ -10,8 +10,8 @@ android {
         applicationId = "pl.swir.czateria"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.4.0"
     }
 
     buildTypes {
