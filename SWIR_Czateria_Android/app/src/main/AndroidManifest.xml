@@ -5,6 +5,8 @@
     <application
         android:allowBackup="true"
         android:hardwareAccelerated="true"
+        android:icon="@drawable/ic_swir"
+        android:roundIcon="@drawable/ic_swir"
         android:label="@string/app_name"
         android:theme="@style/Theme.SWIRCzateria"
         android:usesCleartextTraffic="false">
