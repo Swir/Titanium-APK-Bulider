@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private String swirScript = "";
     private String patchScript = "";
+    private String patchV04Script = "";
     private String defaultUserAgent = "";
     private boolean desktopMode = false;
 
@@ -47,6 +48,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         swirScript = readAsset("swir_app.js");
         patchScript = readAsset("swir_patch_v03.js");
+        patchV04Script = readAsset("swir_patch_v04.js");
 
         getWindow().setStatusBarColor(Color.rgb(7, 16, 25));
         getWindow().setNavigationBarColor(Color.rgb(7, 16, 25));
@@ -62,7 +64,7 @@ public class MainActivity extends Activity {
         root.addView(buildTopBar());
 
         statusText = new TextView(this);
-        statusText.setText("SWIR Czateria+ v0.3 • uruchamianie");
+        statusText.setText("SWIR Czateria+ v0.4 • uruchamianie");
         statusText.setTextColor(Color.rgb(148, 178, 200));
         statusText.setTextSize(10.5f);
         statusText.setPadding(dp(10), dp(4), dp(10), dp(4));
@@ -212,10 +214,12 @@ public class MainActivity extends Activity {
             if (result.contains("READY")) {
                 webView.evaluateJavascript(swirScript, baseResult ->
                         webView.evaluateJavascript(patchScript, patchResult ->
-                                statusText.setText("✅ SWIR v0.3 aktywny • GIF COPY • NO ADS • Friend 85→159")));
+                                webView.evaluateJavascript(patchV04Script, v04Result ->
+                                        statusText.setText("✅ SWIR v0.4 • GIF→KOD • KOLOROWE NICKI • NO ADS • Friend 85→159"))));
             } else if (result.contains("ALREADY")) {
-                webView.evaluateJavascript(patchScript, null);
-                statusText.setText("✅ SWIR v0.3 aktywny");
+                webView.evaluateJavascript(patchScript, patchResult ->
+                        webView.evaluateJavascript(patchV04Script, null));
+                statusText.setText("✅ SWIR v0.4 aktywny");
             }
         });
     }
@@ -263,8 +267,8 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 try {
                     ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    clipboard.setPrimaryClip(ClipData.newPlainText("SWIR GIF", text == null ? "" : text));
-                    toast("📋 Skopiowano GIF/link");
+                    clipboard.setPrimaryClip(ClipData.newPlainText("SWIR", text == null ? "" : text));
+                    toast("📋 Skopiowano");
                 } catch (Exception e) {
                     toast("Nie udało się skopiować");
                 }
@@ -283,9 +287,9 @@ public class MainActivity extends Activity {
                     Intent share = new Intent(Intent.ACTION_SEND);
                     share.setType("text/plain");
                     share.putExtra(Intent.EXTRA_TEXT, text == null ? "" : text);
-                    startActivity(Intent.createChooser(share, "Udostępnij GIF"));
+                    startActivity(Intent.createChooser(share, "Udostępnij"));
                 } catch (Exception e) {
-                    toast("Nie udało się udostępnić GIF-a");
+                    toast("Nie udało się udostępnić");
                 }
             });
         }
