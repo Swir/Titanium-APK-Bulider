@@ -41,7 +41,10 @@ jobs:
           gradle-version: '8.9'
 
       - name: Check SWIR JavaScript syntax
-        run: node --check SWIR_Czateria_Android/app/src/main/assets/swir_app.js
+        run: |
+          node --check SWIR_Czateria_Android/app/src/main/assets/swir_app.js
+          node --check SWIR_Czateria_Android/app/src/main/assets/swir_patch_v03.js
+          node --check SWIR_Czateria_Android/app/src/main/assets/swir_patch_v04.js
 
       - name: Build debug APK
         working-directory: SWIR_Czateria_Android
@@ -50,12 +53,12 @@ jobs:
       - name: Prepare APK
         run: |
           mkdir -p dist
-          cp SWIR_Czateria_Android/app/build/outputs/apk/debug/app-debug.apk dist/SWIR-Czateria-v0.2-debug.apk
-          sha256sum dist/SWIR-Czateria-v0.2-debug.apk > dist/SWIR-Czateria-v0.2-debug.apk.sha256
+          cp SWIR_Czateria_Android/app/build/outputs/apk/debug/app-debug.apk dist/SWIR-Czateria-v0.4-debug.apk
+          sha256sum dist/SWIR-Czateria-v0.4-debug.apk > dist/SWIR-Czateria-v0.4-debug.apk.sha256
 
       - name: Upload ready APK
         uses: actions/upload-artifact@v4
         with:
-          name: SWIR-Czateria-v0.2-APK
+          name: SWIR-Czateria-v0.4-APK
           path: dist/*
           retention-days: 30
