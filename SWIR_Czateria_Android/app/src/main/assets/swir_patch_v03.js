@@ -1,26 +1,13 @@
 (function(){
 'use strict';
-if(window.SWIR_PATCH&&window.SWIR_PATCH.version==='0.3.0')return;
-const VERSION='0.3.0';
+if(window.SWIR_PATCH&&window.SWIR_PATCH.version==='0.5.0')return;
+const VERSION='0.5.0';
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
-const seenGif=new WeakSet();
 
 function toast(msg){
  try{if(window.SwirAndroid&&typeof SwirAndroid.toast==='function'){SwirAndroid.toast(String(msg));return}}catch(e){}
  try{console.log('[SWIR]',msg)}catch(e){}
-}
-function copyText(text,label){
- const value=String(text||'');
- if(!value)return false;
- try{if(window.SwirAndroid&&typeof SwirAndroid.copyText==='function'){SwirAndroid.copyText(value);toast(label||'Skopiowano');return true}}catch(e){}
- try{navigator.clipboard.writeText(value).then(()=>toast(label||'Skopiowano'));return true}catch(e){}
- try{const ta=document.createElement('textarea');ta.value=value;ta.style.cssText='position:fixed;left:-9999px;top:-9999px';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast(label||'Skopiowano');return true}catch(e){}
- return false;
-}
-function shareText(text){
- try{if(window.SwirAndroid&&typeof SwirAndroid.shareText==='function'){SwirAndroid.shareText(String(text||''));return true}}catch(e){}
- return false;
 }
 
 function installPolishTheme(){
@@ -31,7 +18,6 @@ function installPolishTheme(){
  [id^="m-messages_"],.m-messagesTextArea,.m-container,.m-textArea{background:#08111b!important;color:#dce8f3!important}
  .m-msg-item{background:#111c29!important;color:#dce8f3!important;border:1px solid #24384b!important;border-radius:10px!important;box-shadow:none!important}
  .m-msg-item *:not(img):not(svg):not(path):not(.m-msg-item-user-login):not(.info-user-login){color:#dce8f3!important;background-color:transparent!important}
- .m-msg-item-user-login,.info-user-login{color:var(--swir-app-a,#00e5ff)!important;font-weight:800!important;text-shadow:none!important}
  .m-msg-item a{color:#78caff!important;text-decoration:none!important}
  .m-topic-intro,.m-topic-message{background:#101a27!important;color:#dce8f3!important;border-color:#27384a!important}
  .m-topic-intro *,.m-topic-message *{color:#dce8f3!important}
@@ -41,12 +27,21 @@ function installPolishTheme(){
  [id^="m-textMessage-"],input.text-input,textarea.text-input{background:#050b12!important;color:#f1f7fb!important;border:1px solid var(--swir-app-a,#00e5ff)!important;caret-color:var(--swir-app-a,#00e5ff)!important}
  [id^="m-textMessage-"]::placeholder,input.text-input::placeholder,textarea.text-input::placeholder{color:#8192a3!important;opacity:1!important}
  .button-send,[id^="m-sendMessage-button-"]{background:#ffd166!important;color:#071019!important;border-color:#ffc94f!important;font-weight:800!important}
- .swir-gif-wrap{position:relative!important;display:inline-block!important;max-width:100%!important}
- .swir-gif-tools{position:absolute!important;right:5px!important;top:5px!important;z-index:50!important;display:flex!important;gap:4px!important;opacity:.22!important;transition:opacity .15s!important}
- .swir-gif-wrap:hover .swir-gif-tools,.swir-gif-wrap:active .swir-gif-tools{opacity:1!important}
- .swir-gif-tool{min-width:30px!important;height:30px!important;padding:0 7px!important;border-radius:8px!important;border:1px solid rgba(255,255,255,.22)!important;background:rgba(4,12,20,.88)!important;color:#fff!important;font-size:15px!important;line-height:28px!important;text-align:center!important;box-shadow:0 2px 10px #0008!important}
+ .swir-gif-tools{display:none!important}
  .swir-ad-hidden{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
  `;
+}
+
+function cleanupOldGifTools(){
+ try{
+  $$('.swir-gif-tools').forEach(el=>el.remove());
+  $$('.swir-gif-wrap').forEach(w=>{
+   try{
+    const img=w.querySelector('img');
+    if(img&&w.parentNode){w.parentNode.insertBefore(img,w);w.remove()}
+   }catch(e){}
+  });
+ }catch(e){}
 }
 
 function looksLikeAd(el){
@@ -91,51 +86,17 @@ function hideAds(root=document){
  }catch(e){}
 }
 
-function gifUrl(img){
- return String(img.currentSrc||img.src||img.getAttribute('data-src')||img.getAttribute('data-original')||'');
-}
-function isGifLike(img){
- if(!img||img.tagName!=='IMG')return false;
- const u=gifUrl(img).toLowerCase();
- const cls=String(img.className||'').toLowerCase();
- const alt=String(img.alt||'').toLowerCase();
- return /\.gif(?:$|\?)/.test(u)||/giphy|tenor|gif/.test(u)||/gif/.test(cls)||/gif/.test(alt);
-}
-function decorateGif(img){
- if(!isGifLike(img)||seenGif.has(img))return;
- seenGif.add(img);
- let wrap=img.parentElement;
- if(!wrap||wrap.classList.contains('swir-gif-wrap')===false){
-  const w=document.createElement('span');w.className='swir-gif-wrap';
-  img.parentNode?.insertBefore(w,img);w.appendChild(img);wrap=w;
- }
- const tools=document.createElement('span');tools.className='swir-gif-tools';
- const cp=document.createElement('button');cp.type='button';cp.className='swir-gif-tool';cp.textContent='📋';cp.title='Kopiuj link GIF';
- cp.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();copyText(gifUrl(img),'GIF skopiowany do schowka')});
- cp.addEventListener('touchend',e=>{e.stopPropagation()},{passive:true});
- const sh=document.createElement('button');sh.type='button';sh.className='swir-gif-tool';sh.textContent='↗';sh.title='Udostępnij GIF';
- sh.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(!shareText(gifUrl(img)))copyText(gifUrl(img),'Link GIF skopiowany')});
- tools.appendChild(cp);tools.appendChild(sh);wrap.appendChild(tools);
- let pressTimer=0;
- img.addEventListener('touchstart',()=>{pressTimer=setTimeout(()=>copyText(gifUrl(img),'GIF skopiowany do schowka'),650)},{passive:true});
- img.addEventListener('touchend',()=>clearTimeout(pressTimer),{passive:true});
- img.addEventListener('touchmove',()=>clearTimeout(pressTimer),{passive:true});
-}
-function scanGifs(root=document){
- try{if(root.nodeType===1&&root.tagName==='IMG')decorateGif(root);$$('img',root).forEach(decorateGif)}catch(e){}
-}
-
 function installObserver(){
  if(window.__swirV03Observer)window.__swirV03Observer.disconnect();
  window.__swirV03Observer=new MutationObserver(ms=>{
-  for(const m of ms){for(const n of m.addedNodes){if(n.nodeType===1){hideAds(n);scanGifs(n)}}}
+  for(const m of ms){for(const n of m.addedNodes){if(n.nodeType===1){hideAds(n);cleanupOldGifTools()}}}
  });
  window.__swirV03Observer.observe(document.documentElement||document.body,{childList:true,subtree:true});
 }
-function polishNow(){installPolishTheme();hideAds(document);scanGifs(document)}
+function polishNow(){installPolishTheme();hideAds(document);cleanupOldGifTools()}
 
 polishNow();installObserver();
-setTimeout(polishNow,800);setTimeout(polishNow,2200);setInterval(()=>{hideAds(document);scanGifs(document)},8000);
-window.SWIR_PATCH={version:VERSION,polishNow,hideAds,scanGifs,copyText};
-toast('SWIR v0.3: kolory + reklamy + kopiowanie GIF gotowe');
+setTimeout(polishNow,800);setTimeout(polishNow,2200);setInterval(()=>{hideAds(document);cleanupOldGifTools()},8000);
+window.SWIR_PATCH={version:VERSION,polishNow,hideAds};
+toast('SWIR: wygląd + NO ADS gotowe');
 })();
