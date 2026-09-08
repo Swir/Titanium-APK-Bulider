@@ -1,6 +1,9 @@
 package pl.swir.czateria;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -10,6 +13,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -34,6 +38,7 @@ public class MainActivity extends Activity {
     private TextView statusText;
     private ValueCallback<Uri[]> fileCallback;
     private String swirScript = "";
+    private String patchScript = "";
     private String defaultUserAgent = "";
     private boolean desktopMode = false;
 
@@ -41,18 +46,26 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         swirScript = readAsset("swir_app.js");
+        patchScript = readAsset("swir_patch_v03.js");
+
+        getWindow().setStatusBarColor(Color.rgb(7, 16, 25));
+        getWindow().setNavigationBarColor(Color.rgb(7, 16, 25));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(7, 16, 25));
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            v.setPadding(0, insets.getSystemWindowInsetTop(), 0, insets.getSystemWindowInsetBottom());
+            return insets;
+        });
 
         root.addView(buildTopBar());
 
         statusText = new TextView(this);
-        statusText.setText("SWIR Czateria+ v0.2 • uruchamianie");
-        statusText.setTextColor(Color.rgb(135, 165, 188));
-        statusText.setTextSize(11f);
-        statusText.setPadding(dp(10), dp(5), dp(10), dp(5));
+        statusText.setText("SWIR Czateria+ v0.3 • uruchamianie");
+        statusText.setTextColor(Color.rgb(148, 178, 200));
+        statusText.setTextSize(10.5f);
+        statusText.setPadding(dp(10), dp(4), dp(10), dp(4));
         statusText.setBackgroundColor(Color.rgb(8, 18, 30));
         root.addView(statusText);
 
@@ -73,18 +86,18 @@ public class MainActivity extends Activity {
     private View buildTopBar() {
         HorizontalScrollView scroll = new HorizontalScrollView(this);
         scroll.setHorizontalScrollBarEnabled(false);
-        scroll.setBackgroundColor(Color.rgb(10, 22, 35));
+        scroll.setBackgroundColor(Color.rgb(9, 20, 32));
 
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(6), dp(6), dp(6), dp(6));
+        bar.setPadding(dp(5), dp(4), dp(5), dp(4));
 
         TextView title = new TextView(this);
         title.setText("⚡ SWIR");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(15f);
-        title.setPadding(dp(8), 0, dp(8), 0);
+        title.setTextSize(14f);
+        title.setPadding(dp(7), 0, dp(7), 0);
         bar.addView(title);
 
         bar.addView(makeButton("MOD", v -> runJs("window.SWIR_APP&&SWIR_APP.openPanel()")));
@@ -107,15 +120,15 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(label);
         b.setAllCaps(false);
-        b.setTextSize(11f);
+        b.setTextSize(10.5f);
         b.setTextColor(Color.WHITE);
-        b.setBackgroundColor(Color.rgb(19, 39, 58));
-        b.setPadding(dp(8), 0, dp(8), 0);
+        b.setBackgroundColor(Color.rgb(18, 38, 57));
+        b.setPadding(dp(7), 0, dp(7), 0);
         b.setMinWidth(0);
-        b.setMinHeight(dp(34));
+        b.setMinHeight(dp(32));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(36));
-        lp.setMargins(dp(3), 0, dp(3), 0);
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(34));
+        lp.setMargins(dp(2), 0, dp(2), 0);
         b.setLayoutParams(lp);
         b.setOnClickListener(listener);
         return b;
@@ -136,6 +149,8 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setUserAgentString(defaultUserAgent);
+
+        webView.addJavascriptInterface(new SwirBridge(), "SwirAndroid");
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -195,10 +210,12 @@ public class MainActivity extends Activity {
         webView.evaluateJavascript(gate, result -> {
             if (result == null) return;
             if (result.contains("READY")) {
-                webView.evaluateJavascript(swirScript, null);
-                statusText.setText("✅ SWIR v0.2 aktywny • Friend Protocol 85→159");
+                webView.evaluateJavascript(swirScript, baseResult ->
+                        webView.evaluateJavascript(patchScript, patchResult ->
+                                statusText.setText("✅ SWIR v0.3 aktywny • GIF COPY • NO ADS • Friend 85→159")));
             } else if (result.contains("ALREADY")) {
-                statusText.setText("✅ SWIR aktywny");
+                webView.evaluateJavascript(patchScript, null);
+                statusText.setText("✅ SWIR v0.3 aktywny");
             }
         });
     }
@@ -227,7 +244,8 @@ public class MainActivity extends Activity {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open(name)))) {
             return br.lines().collect(Collectors.joining("\n"));
         } catch (Exception e) {
-            return "console.error('Brak modułu SWIR: " + e.getMessage().replace("'", "") + "');";
+            String msg = e.getMessage() == null ? "unknown" : e.getMessage().replace("'", "");
+            return "console.error('Brak modułu SWIR: " + msg + "');";
         }
     }
 
@@ -237,6 +255,40 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density);
+    }
+
+    public class SwirBridge {
+        @JavascriptInterface
+        public void copyText(String text) {
+            runOnUiThread(() -> {
+                try {
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(ClipData.newPlainText("SWIR GIF", text == null ? "" : text));
+                    toast("📋 Skopiowano GIF/link");
+                } catch (Exception e) {
+                    toast("Nie udało się skopiować");
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void toast(String text) {
+            runOnUiThread(() -> MainActivity.this.toast(text == null ? "SWIR" : text));
+        }
+
+        @JavascriptInterface
+        public void shareText(String text) {
+            runOnUiThread(() -> {
+                try {
+                    Intent share = new Intent(Intent.ACTION_SEND);
+                    share.setType("text/plain");
+                    share.putExtra(Intent.EXTRA_TEXT, text == null ? "" : text);
+                    startActivity(Intent.createChooser(share, "Udostępnij GIF"));
+                } catch (Exception e) {
+                    toast("Nie udało się udostępnić GIF-a");
+                }
+            });
+        }
     }
 
     @Override
