@@ -47,6 +47,47 @@ class V10ProjectTests(unittest.TestCase):
             self.assertIn("debug {", gradle)
             self.assertIn("release {", gradle)
 
+    def test_generated_webview_has_modern_compatibility_bridge(self):
+        with tempfile.TemporaryDirectory() as td:
+            web = Path(td) / "web"
+            web.mkdir()
+            (web / "index.html").write_text("<input type='file'>", encoding="utf-8")
+            b = AndroidBuilder(DummyPaths(td), DummyToolchain(), lambda *_: None)
+            c = self.config(td)
+            c.update(source=str(web), camera=True, microphone=True, location=True)
+            project = b.generate(c)
+            java = (project / "app/src/main/java/com/example/testapp/MainActivity.java").read_text(encoding="utf-8")
+            manifest = (project / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+
+            self.assertIn("onPermissionRequest", java)
+            self.assertIn("requestPermissions", java)
+            self.assertIn("onGeolocationPermissionsShowPrompt", java)
+            self.assertIn("onShowFileChooser", java)
+            self.assertIn("setDownloadListener", java)
+            self.assertIn("shouldOverrideUrlLoading", java)
+            self.assertIn("onShowCustomView", java)
+            self.assertIn("onHideCustomView", java)
+            self.assertIn("webView.destroy()", java)
+            self.assertIn("CAMERA_ENABLED = true", java)
+            self.assertIn("MICROPHONE_ENABLED = true", java)
+            self.assertIn("LOCATION_ENABLED = true", java)
+
+            self.assertIn("android.permission.CAMERA", manifest)
+            self.assertIn("android.permission.RECORD_AUDIO", manifest)
+            self.assertIn("android.permission.ACCESS_FINE_LOCATION", manifest)
+            self.assertIn("android.permission.ACCESS_COARSE_LOCATION", manifest)
+
+    def test_url_wrapper_keeps_cleartext_policy_explicit(self):
+        with tempfile.TemporaryDirectory() as td:
+            b = AndroidBuilder(DummyPaths(td), DummyToolchain(), lambda *_: None)
+            c = self.config(td)
+            c.update(source_type="URL", source="http://example.com/app")
+            project = b.generate(c)
+            manifest = (project / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
+            java = (project / "app/src/main/java/com/example/testapp/MainActivity.java").read_text(encoding="utf-8")
+            self.assertIn('android:usesCleartextTraffic="true"', manifest)
+            self.assertIn('webView.loadUrl("http://example.com/app")', java)
+
     def test_zip_path_traversal_is_rejected(self):
         import zipfile
 
