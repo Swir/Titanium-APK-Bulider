@@ -10,6 +10,8 @@ on:
   push:
     tags:
       - "v10.*"
+    branches:
+      - "release/v10.0.0"
   pull_request:
     paths:
       - "Titanium V10.py"
@@ -39,6 +41,8 @@ jobs:
             $v = "${{ inputs.version }}"
           } elseif ("${{ github.event_name }}" -eq "pull_request") {
             $v = "v10.0.0-rc-ci"
+          } elseif ("${{ github.ref_name }}" -eq "release/v10.0.0") {
+            $v = "v10.0.0"
           } else {
             $v = "${{ github.ref_name }}"
           }
@@ -195,6 +199,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "VERSION=${{ inputs.version }}" >> "$GITHUB_ENV"
+          elif [ "${{ github.ref_name }}" = "release/v10.0.0" ]; then
+            echo "VERSION=v10.0.0" >> "$GITHUB_ENV"
           else
             echo "VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
           fi
