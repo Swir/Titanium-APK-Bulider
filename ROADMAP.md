@@ -12,17 +12,11 @@ Titanium v10 is a clean transition from the experimental v9/Ghost codebase to a 
 
 ## Current v10 status
 
-The v10 foundation is merged into `main`. End-to-end GitHub Actions tests generate a native Android project targeting API 36 and successfully compile a real debug APK. The Windows job builds a standalone PyInstaller executable and smoke-launches that executable with Python removed from `PATH`, `PYTHONHOME` and `PYTHONPATH`.
+The current development line is **v10.0.0-dev.6**. The regular CI gate passes a real API 36 debug APK, signed Release APK/AAB validation and standalone Windows EXE launch. The release-package PR gate now also builds the exact Portable Windows package, validates its bundled runtime, smoke-launches the EXE from inside the Portable directory and uploads the resulting release-candidate artifacts without publishing a GitHub Release.
 
-A public development prerelease, **v10.0.0-dev.1**, is available with:
+The Portable package contains the standalone EXE, Eclipse Temurin JDK 21, Gradle 9.6.0 and SHA-256-verified Google bundletool 1.18.3 with its Apache 2.0 license. Android SDK components remain license-gated and are provisioned into Titanium's private user-data directory after explicit user acceptance.
 
-- standalone Windows EXE;
-- Portable Windows ZIP containing the EXE, Temurin JDK 21 and Gradle 9.6.0;
-- SHA-256 files for both deliverables.
-
-The current development line is **v10.0.0-dev.5**. dev.2 added Simple/Advanced UI, first-run setup, project preflight, resumable/retrying downloads and Repair Build Engine. dev.3 added the production-oriented WebView compatibility engine. dev.4 added the signed-release CI quality gate. dev.5 moves artifact verification into Titanium itself: APKs are checked with `apksigner`, AABs are structurally checked with SHA-256-pinned `bundletool`, and AAB signing integrity is checked with `jarsigner` plus direct signature-metadata inspection.
-
-The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova or Android Studio installation. Android SDK components are prepared inside Titanium after explicit SDK-license consent. Stable `v10.0.0` remains gated by the criteria below.
+Stable `v10.0.0` remains gated by the criteria below rather than by a calendar date.
 
 ## v10.0 milestones
 
@@ -50,6 +44,7 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [x] Resumable downloads and retry/backoff.
 - [x] Toolchain repair button that only modifies Titanium-managed files.
 - [x] Detect/provision SHA-256-pinned `bundletool` for post-build validation.
+- [ ] End-to-end isolated managed-engine Prepare/Repair CI gate without relying on system Java/Gradle/Android SDK.
 - [ ] Toolchain update channel (Stable / Preview).
 - [ ] Offline cache import/export.
 
@@ -113,17 +108,21 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [x] AAB processing test with SHA-256-pinned Google `bundletool` 1.18.3 producing a universal APK set.
 - [x] Unit tests for the in-app post-build validator and builder integration.
 - [x] Windows standalone EXE launch smoke test with Python removed from runtime environment paths.
+- [x] Exact release-package PR gate builds and smoke-tests the Portable directory before ZIP creation.
 - [ ] VirusTotal-friendly deterministic packaging where possible.
 - [ ] SBOM and dependency/license manifest.
 
 ### M6 — v10 release packaging 🚧
 - [x] Automated standalone Windows EXE packaging workflow.
-- [x] Automated Portable package containing the EXE + JDK + Gradle.
+- [x] Automated Portable package containing the EXE + JDK + Gradle + bundletool.
 - [x] Portable runtime discovery beside the EXE; no installer or admin rights required.
-- [x] SHA-256 files for release assets and verification of bundled JDK/Gradle downloads.
-- [x] Validate that packaged Portable runtime actually contains `java.exe` and `gradle.bat` on future releases.
+- [x] SHA-256 files for release assets and verification of bundled JDK/Gradle/bundletool downloads.
+- [x] Validate packaged `java.exe`, `jarsigner.exe`, `gradle.bat`, bundletool and the bundletool license before ZIP creation.
+- [x] Smoke-launch the EXE from inside the generated Portable directory with Python runtime paths removed.
+- [x] Pull requests can build the exact release package with read-only repository permissions; publication is isolated in a separate write-enabled job.
 - [x] Publish development prerelease `v10.0.0-dev.1` with EXE + Portable ZIP + checksums.
 - [x] Add release notes, v9→v10 migration notes and troubleshooting guide.
+- [ ] Publish the next fully hardened development/RC package from the new release workflow.
 - [ ] Publish `Titanium-APK-Builder-v10.0.0-Windows-x64.exe` after all stable gates pass.
 - [ ] Publish `Titanium-APK-Builder-v10.0.0-Portable-Windows-x64.zip` after all stable gates pass.
 - [ ] Sign the Windows executable when a code-signing certificate becomes available.
@@ -132,15 +131,15 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 
 v10.0 is considered stable only when all of the following are true:
 
-1. A clean Windows machine can launch Titanium without Python or Android Studio. The CI standalone EXE launch test without Python runtime paths now passes; a final clean-machine/Portable release-candidate pass remains.
-2. The user can prepare or repair the build engine from inside Titanium without administrator rights.
-3. A sample local HTML5 project passes preflight and builds to a working debug APK.
+1. A Windows release-package runner can launch both the standalone and Portable Titanium EXE with Python removed from runtime paths. ✅
+2. The user can prepare or repair the build engine from inside Titanium without administrator rights; final isolated managed-engine CI verification remains.
+3. A sample local HTML5 project passes preflight and builds to a working debug APK. ✅
 4. The same generated project builds in CI to a signed Release APK and signed AAB, and both pass signing/bundle validation. ✅
 5. Target SDK is API 36 or newer and generated APK/AAB outputs pass Titanium's post-build validator. ✅
-6. No signing password is written to configuration, source files, logs or generated Gradle files.
-7. Titanium never terminates or deletes unrelated Java/Gradle/Android Studio components.
-8. CI validates Python syntax, analyzer tests, generated WebView compatibility, validator tests, a real API 36 debug APK, signed Release APK/AAB validation and standalone Windows executable launch. ✅
-9. README, CHANGELOG, migration and troubleshooting documentation match the actual application.
+6. No signing password is written to configuration, source files, logs or generated Gradle files. ✅
+7. Titanium never terminates or deletes unrelated Java/Gradle/Android Studio components. ✅
+8. CI validates Python syntax, analyzer tests, generated WebView compatibility, validator tests, a real API 36 debug APK, signed Release APK/AAB validation, standalone Windows EXE launch and exact Portable release-package assembly. ✅
+9. README, CHANGELOG, migration, security, third-party notices and troubleshooting documentation match the actual application.
 
 ## After v10.0
 
