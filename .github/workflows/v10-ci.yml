@@ -40,6 +40,31 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.0"
           pyinstaller --noconfirm --clean --onefile --windowed --name "Titanium-APK-Builder-v10" "Titanium V10.py"
+      - name: Smoke-launch standalone Windows EXE
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "dist/Titanium-APK-Builder-v10.exe").Path
+          $oldPath = $env:PATH
+          $oldPythonHome = $env:PYTHONHOME
+          $oldPythonPath = $env:PYTHONPATH
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+            Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
+            Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+            $process = Start-Process -FilePath $exe -PassThru
+            Start-Sleep -Seconds 5
+            if ($process.HasExited) {
+              throw "Standalone EXE exited during launch smoke test with code $($process.ExitCode)"
+            }
+            Stop-Process -Id $process.Id -Force
+            Wait-Process -Id $process.Id -ErrorAction SilentlyContinue
+            Write-Host "Standalone EXE launch smoke test passed without Python on PATH."
+          }
+          finally {
+            $env:PATH = $oldPath
+            if ($null -ne $oldPythonHome) { $env:PYTHONHOME = $oldPythonHome } else { Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue }
+            if ($null -ne $oldPythonPath) { $env:PYTHONPATH = $oldPythonPath } else { Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue }
+          }
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
