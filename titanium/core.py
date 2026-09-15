@@ -20,6 +20,9 @@ ANDROID_TOOLS_URL = "https://dl.google.com/android/repository/commandlinetools-w
 ANDROID_TOOLS_SHA256 = "90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a"
 GRADLE_URL = f"https://services.gradle.org/distributions/gradle-{GRADLE_VERSION}-bin.zip"
 ANDROID_LICENSE_URL = "https://developer.android.com/studio/terms"
+BUNDLETOOL_VERSION = "1.18.3"
+BUNDLETOOL_URL = f"https://github.com/google/bundletool/releases/download/{BUNDLETOOL_VERSION}/bundletool-all-{BUNDLETOOL_VERSION}.jar"
+BUNDLETOOL_SHA256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
 
 
 class Paths:
@@ -31,10 +34,12 @@ class Paths:
         self.portable_jdk = self.portable / "jdk"
         self.portable_gradle = self.portable / "gradle"
         self.portable_sdk = self.portable / "android-sdk"
+        self.portable_bundletool = self.portable / "bundletool" / f"bundletool-all-{BUNDLETOOL_VERSION}.jar"
         self.toolchain = self.root / "toolchain"
         self.jdk = self.toolchain / "jdk"
         self.sdk = self.toolchain / "android-sdk"
         self.gradle = self.toolchain / "gradle"
+        self.bundletool = self.toolchain / "bundletool" / f"bundletool-all-{BUNDLETOOL_VERSION}.jar"
         self.workspace = self.root / "workspace"
         self.downloads = self.root / "downloads"
         self.config = self.root / "config.json"
@@ -102,6 +107,24 @@ class ToolchainManager:
         x = shutil.which("java")
         return Path(x).resolve().parent.parent if x else None
 
+    def java_exe(self):
+        home = self.java_home()
+        if home:
+            candidate = home / "bin/java.exe"
+            if candidate.exists():
+                return candidate
+        x = shutil.which("java")
+        return Path(x) if x else None
+
+    def jarsigner_exe(self):
+        home = self.java_home()
+        if home:
+            candidate = home / "bin/jarsigner.exe"
+            if candidate.exists():
+                return candidate
+        x = shutil.which("jarsigner")
+        return Path(x) if x else None
+
     def sdk_root(self):
         for root in (self.p.portable_sdk, self.p.sdk):
             if (root / "cmdline-tools/latest/bin/sdkmanager.bat").exists():
@@ -113,6 +136,19 @@ class ToolchainManager:
         x = Path(os.environ.get("LOCALAPPDATA", "")) / "Android/Sdk"
         return x if x.exists() else None
 
+    def apksigner_exe(self):
+        sdk = self.sdk_root()
+        if not sdk:
+            return None
+        candidate = sdk / f"build-tools/{BUILD_TOOLS}/apksigner.bat"
+        return candidate if candidate.exists() else None
+
+    def bundletool_jar(self):
+        for candidate in (self.p.portable_bundletool, self.p.bundletool):
+            if candidate.exists():
+                return candidate
+        return None
+
     def gradle_exe(self):
         for root in (self.p.portable_gradle, self.p.gradle):
             x = self._find(root, "gradle.bat")
@@ -123,12 +159,15 @@ class ToolchainManager:
 
     def status(self):
         sdk = self.sdk_root()
+        bundletool = self.bundletool_jar()
         return {
             "JDK": str(self.java_home() or "missing"),
             "Android SDK": str(sdk or "missing"),
             f"Android API {ANDROID_API}": "ready" if sdk and (sdk / f"platforms/android-{ANDROID_API}/android.jar").exists() else "missing",
             f"Build Tools {BUILD_TOOLS}": "ready" if sdk and (sdk / f"build-tools/{BUILD_TOOLS}/aapt2.exe").exists() else "missing",
             "Platform Tools": "ready" if sdk and (sdk / "platform-tools/adb.exe").exists() else "missing",
+            "APK Signer": "ready" if self.apksigner_exe() else "missing",
+            f"bundletool {BUNDLETOOL_VERSION}": str(bundletool or "missing"),
             "Gradle": str(self.gradle_exe() or "missing"),
         }
 
@@ -147,6 +186,7 @@ class ToolchainManager:
 
     def _download(self, url, dest, label, expected_sha256=None, retries=3):
         dest = Path(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
         part = dest.with_suffix(dest.suffix + ".part")
         last_error: Exception | None = None
 
@@ -253,6 +293,10 @@ class ToolchainManager:
             shutil.rmtree(platform_tools, ignore_errors=True)
             actions.append("Removed incomplete Platform Tools")
 
+        if self.p.bundletool.exists() and self._sha256(self.p.bundletool) != BUNDLETOOL_SHA256:
+            self.p.bundletool.unlink(missing_ok=True)
+            actions.append("Removed invalid managed bundletool")
+
         for partial in self.p.downloads.glob("*.part"):
             if partial.stat().st_size == 0:
                 partial.unlink(missing_ok=True)
@@ -332,5 +376,9 @@ class ToolchainManager:
         self.emit("detail", r.stdout[-6000:])
         if r.returncode:
             raise RuntimeError("Android SDK provisioning failed")
+
+        if not self.bundletool_jar():
+            self._download(BUNDLETOOL_URL, self.p.bundletool, f"bundletool {BUNDLETOOL_VERSION}", BUNDLETOOL_SHA256)
+
         if not self.ready():
             raise RuntimeError("Toolchain readiness check failed")
