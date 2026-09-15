@@ -50,7 +50,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path portable/runtime | Out-Null
           Copy-Item dist/Titanium-APK-Builder.exe portable/Titanium-APK-Builder.exe
-          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,SECURITY.md portable/
+          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,SECURITY.md,TROUBLESHOOTING.md portable/
 
           $jdkMetaUri = "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jdk&os=windows&vendor=eclipse&heap_size=normal"
           $jdkMeta = Invoke-RestMethod -Uri $jdkMetaUri
