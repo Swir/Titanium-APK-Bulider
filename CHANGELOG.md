@@ -14,6 +14,13 @@ All notable Titanium APK Builder changes are documented here.
 - The packaged Portable EXE is smoke-launched from inside the final Portable directory with Python runtime paths removed.
 - Android SDK components remain intentionally excluded from the Portable archive and continue to be provisioned only after Android SDK license acceptance.
 
+### Final stable quality gate
+- Added an isolated Windows Prepare/Repair Build Engine integration test with system Java, Android SDK and Gradle discovery disabled.
+- The isolated test provisions Temurin JDK, Gradle, Android command-line tools, API 36, Build Tools 36.0.0, Platform Tools and bundletool entirely under Titanium's private user-data directory.
+- The gate executes the managed Java, Gradle, apksigner and bundletool binaries after provisioning.
+- The test deliberately corrupts managed bundletool and removes API 36 `android.jar`, then proves Repair Build Engine restores both and returns to a fully ready state.
+- Final migration and troubleshooting documentation was aligned with the verified Portable runtime and post-build validator behavior.
+
 ## [10.0.0-dev.5] - 2026-09-15
 
 ### Added
@@ -101,7 +108,7 @@ All notable Titanium APK Builder changes are documented here.
 
 ### Safety
 - Repair Engine never deletes system Java, Android Studio, system Android SDKs or the Portable runtime.
-- Project Analyzer blocks builds with missing or unsafe local asset paths before Gradle starts.
+- Project Analyzer blocks builds with missing or unsafe local web assets before a build starts.
 
 ## [10.0.0-dev.1] - 2026-09-15
 

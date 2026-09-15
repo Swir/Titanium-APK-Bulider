@@ -19,7 +19,9 @@ v10 accepts:
 ### Managed build engine
 Use the **Build Engine** tab and **Prepare Build Engine**. Titanium can use a compatible system toolchain, its private per-user toolchain, or a Portable runtime placed beside the EXE.
 
-The Portable release includes JDK and Gradle. Android SDK components are downloaded directly by Titanium after the user accepts Google's Android SDK terms.
+The v10 Portable release contains the standalone Titanium EXE, Eclipse Temurin JDK 21, Gradle 9.6.0 and SHA-256-verified Google bundletool 1.18.3. Android SDK components are not redistributed in the Portable archive; Titanium downloads them directly into its private per-user directory only after the user accepts Google's Android SDK terms.
+
+The Prepare/Repair path is tested in CI from an isolated user-data directory with system Java, Android SDK and Gradle discovery disabled. The test also deliberately corrupts managed components and verifies that **Repair Build Engine** restores them without using system-wide install locations.
 
 ### Signing passwords are not migrated
 v9 could save keystore passwords in its JSON configuration. v10 deliberately does not migrate or persist those passwords. Re-enter store/key passwords when building a signed release.
@@ -30,13 +32,15 @@ v10 stores its configuration under the current user's local application-data dir
 ## Recommended migration flow
 
 1. Keep v9 installed or archived until an important project has been rebuilt successfully with v10.
-2. Download the v10 Portable prerelease for the easiest setup.
+2. Download the v10 Portable release for the easiest setup.
 3. Open Titanium and prepare the Build Engine if Android SDK components are not present yet.
 4. Select the original HTML project folder or ZIP instead of a v9-generated Android Studio project.
 5. Re-enter app identity, version and permissions.
 6. Re-select your JKS/keystore for Release builds and enter passwords again.
 7. Build a Debug APK and test it on a device.
 8. Build a signed Release APK/AAB only after the Debug build behaves correctly.
+
+Titanium validates generated APK/AAB artifacts after the build. Signed APK output is checked with Android Build Tools `apksigner`; AAB output is structurally checked with bundletool and its signing integrity is checked with JDK `jarsigner` plus signature metadata inspection.
 
 ## What v10 intentionally does not import
 
