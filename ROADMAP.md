@@ -20,7 +20,7 @@ A public development prerelease, **v10.0.0-dev.1**, is available with:
 - Portable Windows ZIP containing the EXE, Temurin JDK 21 and Gradle 9.6.0;
 - SHA-256 files for both deliverables.
 
-The current development line is **v10.0.0-dev.2**. It adds Simple/Advanced UI modes, first-run setup, project preflight analysis, resumable/retrying toolchain downloads, safer readiness checks and Repair Build Engine.
+The current development line is **v10.0.0-dev.3**. dev.2 added Simple/Advanced UI modes, first-run setup, project preflight analysis, resumable/retrying toolchain downloads, safer readiness checks and Repair Build Engine. dev.3 adds a production-oriented WebView compatibility engine with runtime permissions, upload/download handling, external schemes and HTML5 fullscreen support.
 
 The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova or Android Studio installation. Android SDK components are prepared inside Titanium after explicit SDK-license consent. Stable `v10.0.0` remains gated by the criteria below.
 
@@ -52,15 +52,19 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [ ] Toolchain update channel (Stable / Preview).
 - [ ] Offline cache import/export.
 
-### M2 — Web app compatibility
+### M2 — Web app compatibility 🚧
 - [x] Project preflight scanner for `index.html`, local HTML asset references and unsafe paths.
 - [ ] Advanced CSS `url()` / `@import` and JavaScript module dependency scanning.
 - [ ] Configurable network security policy.
-- [ ] Runtime permission bridge for camera, microphone and geolocation.
-- [ ] File upload/download support inside WebView.
-- [ ] Deep links / custom schemes.
+- [x] Runtime permission bridge for camera and microphone through WebChromeClient + Android runtime permissions.
+- [x] Runtime geolocation bridge through WebChromeClient + Android fine/coarse location permissions.
+- [x] HTML file upload support through the native Android file picker.
+- [x] HTTP/HTTPS download support through Android DownloadManager.
+- [x] Deep links / custom schemes including `tel:`, `mailto:`, `sms:`, `geo:`, `market:` and `intent:` routing.
 - [x] Basic WebView back navigation.
-- [ ] Full-screen / immersive mode.
+- [x] HTML5 custom-view fullscreen support with safe exit/back handling.
+- [x] Explicit WebView teardown on Activity destruction to reduce retained WebView memory.
+- [ ] App-wide optional immersive mode.
 - [ ] Status/navigation bar customization.
 - [ ] Splash screen generator.
 - [ ] Adaptive launcher icon generator.
@@ -97,6 +101,7 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [x] ZIP security tests.
 - [x] Signing-secret persistence tests.
 - [x] Project Analyzer tests for valid projects, missing assets and HTTP warnings.
+- [x] Generated WebView compatibility tests for runtime permissions, upload, download, external routing and fullscreen hooks.
 - [x] Generated Gradle project smoke test on GitHub Actions.
 - [x] APK build test against API 36.
 - [ ] Release-signing test with ephemeral CI keystore.
@@ -127,7 +132,7 @@ v10.0 is considered stable only when all of the following are true:
 5. Target SDK is API 36 or newer and the build passes post-build validation.
 6. No signing password is written to configuration, source files, logs or generated Gradle files.
 7. Titanium never terminates or deletes unrelated Java/Gradle/Android Studio components.
-8. CI validates Python syntax, analyzer tests, generated project structure, a real API 36 APK build and the Windows executable build.
+8. CI validates Python syntax, analyzer tests, generated WebView compatibility, generated project structure, a real API 36 APK build and the Windows executable build.
 9. README, CHANGELOG, migration and troubleshooting documentation match the actual application.
 
 ## After v10.0
