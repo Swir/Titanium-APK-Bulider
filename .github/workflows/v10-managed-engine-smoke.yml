@@ -1,0 +1,146 @@
+name: Titanium v10 Managed Engine Smoke
+
+on:
+  pull_request:
+    paths:
+      - "titanium/core.py"
+      - ".github/workflows/v10-managed-engine-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "titanium/core.py"
+      - ".github/workflows/v10-managed-engine-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  managed-engine-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up bootstrap Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Prepare and repair fully isolated Titanium-managed toolchain
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $python = (Get-Command python).Source
+          $isolated = Join-Path $env:RUNNER_TEMP "Titanium-Isolated-Engine"
+          Remove-Item $isolated -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $isolated | Out-Null
+
+          $env:LOCALAPPDATA = $isolated
+          $env:APPDATA = $isolated
+          Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue
+          Remove-Item Env:ANDROID_SDK_ROOT -ErrorAction SilentlyContinue
+          Remove-Item Env:ANDROID_HOME -ErrorAction SilentlyContinue
+          Remove-Item Env:GRADLE_HOME -ErrorAction SilentlyContinue
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+
+          @'
+          import os
+          import subprocess
+          from pathlib import Path
+
+          from titanium import ANDROID_API, BUILD_TOOLS
+          from titanium.core import BUNDLETOOL_SHA256, Paths, ToolchainManager
+
+          log = []
+          def emit(kind, text):
+              line = f"[{kind}] {text}"
+              log.append(line)
+              print(line)
+
+          root = Path(os.environ["LOCALAPPDATA"]).resolve()
+          paths = Paths()
+          manager = ToolchainManager(paths, emit)
+
+          # Prove that the test starts without discovering system Java/SDK/Gradle.
+          assert manager.java_home() is None, f"Unexpected Java before provisioning: {manager.java_home()}"
+          assert manager.sdk_root() is None, f"Unexpected Android SDK before provisioning: {manager.sdk_root()}"
+          assert manager.gradle_exe() is None, f"Unexpected Gradle before provisioning: {manager.gradle_exe()}"
+          assert manager.bundletool_jar() is None, f"Unexpected bundletool before provisioning: {manager.bundletool_jar()}"
+
+          manager.provision()
+          assert manager.ready(), manager.status()
+
+          java_home = manager.java_home().resolve()
+          sdk_root = manager.sdk_root().resolve()
+          gradle = manager.gradle_exe().resolve()
+          bundletool = manager.bundletool_jar().resolve()
+          jarsigner = manager.jarsigner_exe().resolve()
+          apksigner = manager.apksigner_exe().resolve()
+
+          managed_root = (root / "TitaniumAPKBuilder").resolve()
+          for name, candidate in {
+              "Java": java_home,
+              "Android SDK": sdk_root,
+              "Gradle": gradle,
+              "bundletool": bundletool,
+              "jarsigner": jarsigner,
+              "apksigner": apksigner,
+          }.items():
+              assert candidate == managed_root or managed_root in candidate.parents, (
+                  f"{name} escaped Titanium-managed user directory: {candidate}"
+              )
+
+          assert (sdk_root / f"platforms/android-{ANDROID_API}/android.jar").is_file()
+          assert (sdk_root / f"build-tools/{BUILD_TOOLS}/aapt2.exe").is_file()
+          assert (sdk_root / "platform-tools/adb.exe").is_file()
+          assert jarsigner.is_file()
+          assert apksigner.is_file()
+          assert manager._sha256(bundletool) == BUNDLETOOL_SHA256
+
+          env = manager.env()
+          for command in (
+              [str(java_home / "bin/java.exe"), "-version"],
+              [str(gradle), "--version"],
+              [str(apksigner), "version"],
+              [str(java_home / "bin/java.exe"), "-jar", str(bundletool), "version"],
+          ):
+              result = subprocess.run(
+                  command,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.STDOUT,
+                  text=True,
+                  encoding="utf-8",
+                  errors="replace",
+                  env=env,
+              )
+              print(result.stdout[-3000:])
+              assert result.returncode == 0, command
+
+          # Corrupt only managed components, then prove Repair restores them.
+          bundletool.write_bytes(b"corrupt-managed-bundletool")
+          android_jar = sdk_root / f"platforms/android-{ANDROID_API}/android.jar"
+          android_jar.unlink()
+          actions = manager.repair()
+          print("Repair actions:", actions)
+
+          assert any("bundletool" in item.lower() for item in actions), actions
+          assert any(f"android api {ANDROID_API}" in item.lower() for item in actions), actions
+          assert manager.ready(), manager.status()
+          assert manager._sha256(manager.bundletool_jar()) == BUNDLETOOL_SHA256
+          assert (manager.sdk_root() / f"platforms/android-{ANDROID_API}/android.jar").is_file()
+
+          print("FINAL STATUS")
+          for key, value in manager.status().items():
+              print(f"{key}: {value}")
+          print("ISOLATED MANAGED ENGINE PREPARE/REPAIR PASSED")
+          '@ | & $python -
+
+      - name: Verify no system-wide install target was created
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "Titanium-Isolated-Engine\TitaniumAPKBuilder"
+          if (-not (Test-Path "$root\toolchain")) { throw "Managed toolchain directory missing" }
+          Write-Host "Managed engine remained under isolated user-data root: $root"
