@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - v10-development
+      - "v10-*"
       - main
     paths:
       - "Titanium V10.py"
@@ -33,7 +34,7 @@ jobs:
       - name: Validate Python
         shell: pwsh
         run: |
-          python -m py_compile "Titanium V10.py" titanium/__init__.py titanium/core.py titanium/builder.py
+          python -m py_compile "Titanium V10.py" titanium/__init__.py titanium/core.py titanium/builder.py titanium/analyzer.py
           python -m unittest discover -s tests -v
 
       - name: Build standalone Windows EXE
