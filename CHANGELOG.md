@@ -2,6 +2,18 @@
 
 All notable Titanium APK Builder changes are documented here.
 
+## [10.0.0-dev.6] - 2026-09-15
+
+### Release candidate hardening
+- Refactored the v10 release workflow into separate package and publish jobs so pull requests can build the exact release package without receiving release-write permissions.
+- Pull requests that touch release packaging now run the full Windows release-package path without publishing a GitHub Release.
+- Standalone release EXE is smoke-launched with Python removed from `PATH`, `PYTHONHOME` and `PYTHONPATH` before packaging.
+- Portable Runtime now includes SHA-256-verified Google bundletool 1.18.3 next to the EXE, Temurin JDK 21 and Gradle 9.6.0.
+- Portable package includes the bundletool Apache 2.0 license under `licenses/bundletool-LICENSE.txt`.
+- Portable packaging validates `java.exe`, `jarsigner.exe`, `gradle.bat`, bundletool presence, bundletool execution and Gradle execution before creating the ZIP.
+- The packaged Portable EXE is smoke-launched from inside the final Portable directory with Python runtime paths removed.
+- Android SDK components remain intentionally excluded from the Portable archive and continue to be provisioned only after Android SDK license acceptance.
+
 ## [10.0.0-dev.5] - 2026-09-15
 
 ### Added
