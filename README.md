@@ -12,7 +12,7 @@
 
 Titanium v10 is being rebuilt around a simple goal: **a user should not have to install Android Studio, Python, Node.js, Cordova, JDK or Gradle manually just to turn a web project into an Android application.**
 
-The stable legacy release remains `v9.0.0`. The current v10 development line is `10.0.0-dev.2`; see the full [`ROADMAP.md`](ROADMAP.md) for the remaining stable-release gates.
+The stable legacy release remains `v9.0.0`. The current v10 development line is `10.0.0-dev.3`; see the full [`ROADMAP.md`](ROADMAP.md) for the remaining stable-release gates.
 
 ## What v10 already does
 
@@ -29,6 +29,12 @@ The stable legacy release remains `v9.0.0`. The current v10 development line is 
 - Runs a **Project Analyzer** before build to catch missing assets, unsafe paths and common WebView compatibility problems.
 - Includes a first-run setup wizard and a safe **Repair Build Engine** action.
 - Retries and resumes interrupted managed-toolchain downloads when the server supports HTTP Range requests.
+- Supports WebView runtime permission bridging for camera, microphone and geolocation.
+- Supports HTML file upload controls through the Android file picker.
+- Supports HTTP/HTTPS downloads through Android DownloadManager.
+- Routes `tel:`, `mailto:`, `sms:`, `geo:`, `market:`, `intent:` and other external/custom schemes to Android handlers.
+- Supports HTML5 fullscreen/custom-view content and restores normal WebView navigation after exit.
+- Explicitly destroys the WebView when the generated Activity closes to reduce retained WebView memory.
 
 ## Simple Mode
 
@@ -40,6 +46,16 @@ Simple Mode intentionally keeps the workflow short:
 4. Click **Build APK**.
 
 Titanium applies safe defaults for the remaining settings. Switching to Advanced Mode exposes SDK, output format, orientation, permissions and release signing.
+
+## WebView compatibility engine
+
+`10.0.0-dev.3` moves generated apps beyond a basic website wrapper.
+
+Camera and microphone access are bridged through `WebChromeClient.onPermissionRequest` and Android runtime permissions. Location uses the WebView geolocation callback plus Android fine/coarse location permissions. These capabilities are only granted when the corresponding option is enabled in Titanium and the Android user grants the runtime permission.
+
+HTML `<input type="file">` elements open the native Android file picker. HTTP/HTTPS downloads are handed to Android's DownloadManager, including the current WebView cookies and user-agent where available. Non-web schemes are routed to Android through explicit intents, while normal HTTP/HTTPS/file navigation stays inside the WebView.
+
+HTML5 video and other custom-view content can enter fullscreen using `WebChromeClient` and safely return to the generated application. Back navigation first exits fullscreen, then walks WebView history, then closes the Activity.
 
 ## Project Analyzer
 
@@ -93,13 +109,13 @@ The legacy file `Titanium V9.py` is retained so the published `v9.0.0` release r
 
 Titanium v10 does **not** globally terminate `java.exe`. It also does **not** save keystore passwords in its JSON configuration. Release signing secrets exist only in memory and are passed to Gradle through temporary process environment variables.
 
-Toolchain archives are SHA-256 verified. ZIP imports reject path traversal entries. The new preflight analyzer also blocks missing or unsafe local web assets before a build starts.
+Toolchain archives are SHA-256 verified. ZIP imports reject path traversal entries. The preflight analyzer blocks missing or unsafe local web assets before a build starts. Generated WebView permission requests only grant camera/microphone resources explicitly enabled by the project and approved by Android runtime permission prompts.
 
 ## Current status
 
-**v10.0.0-dev.2 — active development**
+**v10.0.0-dev.3 — active development**
 
-The public `v10.0.0-dev.1` prerelease proved the standalone EXE + Portable JDK/Gradle packaging path. dev.2 adds the next UX and reliability layer; stable `v10.0.0` will only be published after every release criterion in [`ROADMAP.md`](ROADMAP.md) passes.
+The public `v10.0.0-dev.1` prerelease proved the standalone EXE + Portable JDK/Gradle packaging path. dev.2 added UX, diagnostics and build-engine repair. dev.3 adds the production-oriented WebView compatibility layer. Stable `v10.0.0` will only be published after every release criterion in [`ROADMAP.md`](ROADMAP.md) passes.
 
 ## Author
 
