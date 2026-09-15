@@ -2,6 +2,28 @@
 
 All notable Titanium APK Builder changes are documented here.
 
+## [10.0.0-dev.3] - 2026-09-15
+
+### Added
+- WebView runtime permission bridge for camera and microphone using `WebChromeClient.onPermissionRequest` plus Android runtime permissions.
+- WebView geolocation bridge using Android fine/coarse location runtime permissions.
+- Native Android file picker support for HTML `<input type="file">` controls.
+- HTTP/HTTPS download handling through Android `DownloadManager`, including WebView cookies and user-agent headers when available.
+- External/custom scheme routing for links such as `tel:`, `mailto:`, `sms:`, `geo:`, `market:` and `intent:`.
+- HTML5 custom-view fullscreen support with safe exit and back-button handling.
+- Generated-code tests covering the new WebView compatibility hooks and permission declarations.
+
+### Reliability
+- Generated WebViews are explicitly detached and destroyed when the Activity closes to reduce retained WebView memory.
+- Back navigation now exits fullscreen first, then traverses WebView history, then closes the Activity.
+- Unsupported download schemes fail visibly instead of being silently handed to `DownloadManager`.
+
+### Security
+- Camera and microphone WebView resources are only granted when the feature is enabled in Titanium and the Android runtime permission is actually granted.
+- Geolocation remains denied when the project option is disabled or the Android user rejects location permission.
+- `javascript:` navigation attempts are not forwarded to external Android intent handlers.
+- Normal HTTP/HTTPS/file navigation remains inside WebView; only non-web schemes are routed externally.
+
 ## [10.0.0-dev.2] - 2026-09-15
 
 ### Added
