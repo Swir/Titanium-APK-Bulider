@@ -10,9 +10,9 @@
 
 ## Titanium v10
 
-Titanium APK Builder **10.0.0** is the stable v10 line. Its goal is simple: a user should not have to manually install Android Studio, Python, Node.js, Cordova, JDK or Gradle just to turn a web project into an Android application.
+Titanium APK Builder **10.0.0** is the published stable v10 release. Its goal is simple: a user should not have to manually install Android Studio, Python, Node.js, Cordova, JDK or Gradle just to turn a web project into an Android application.
 
-The exact `10.0.0` candidate is required to pass the normal Android/Windows CI, the full Portable release-package gate and the isolated managed Build Engine Prepare/Repair gate before publication.
+Stable release: [`v10.0.0`](https://github.com/Swir/Titanium-APK-Bulider/releases/tag/v10.0.0)
 
 ## What v10 does
 
@@ -72,7 +72,7 @@ The isolated managed-engine CI starts without detectable system Java, Android SD
 
 ## Release workflow safety
 
-Release packaging and release publication are separate jobs. Pull requests build the exact release package with read-only repository permissions. The write-enabled publish job is skipped for pull requests and runs only for explicit release/tag events.
+Release packaging and release publication are separate jobs. Pull requests build the exact release package with read-only repository permissions. The write-enabled publish job is skipped for pull requests and is limited to explicit release/tag events or the dedicated `release/v10.0.0` publication branch.
 
 Stable downloadable assets use versioned names and include SHA-256 checksum files.
 
@@ -94,9 +94,11 @@ See [`SECURITY.md`](SECURITY.md), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES
 
 ## Current status
 
-**10.0.0 — stable release candidate**
+**10.0.0 — stable and published**
 
-All defined v10.0 technical and documentation criteria passed on the preceding candidate. The exact `10.0.0` commit is undergoing the final repeated CI/package/managed-engine gates before stable publication.
+The exact stable release passed the Windows EXE launch gate, real API 36 debug build, signed Release APK/AAB validation, exact Portable package gate and isolated managed Build Engine Prepare/Repair gate before publication.
+
+Published assets include the versioned Windows EXE, Portable Windows ZIP and SHA-256 checksum files for both.
 
 ## Legacy v9
 
