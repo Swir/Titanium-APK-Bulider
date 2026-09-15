@@ -12,7 +12,7 @@
 
 Titanium v10 is being rebuilt around a simple goal: **a user should not have to install Android Studio, Python, Node.js, Cordova, JDK or Gradle manually just to turn a web project into an Android application.**
 
-The stable legacy release remains `v9.0.0`. The current v10 development line is `10.0.0-dev.4`; see the full [`ROADMAP.md`](ROADMAP.md) for the remaining stable-release gates.
+The stable legacy release remains `v9.0.0`. The current v10 development line is `10.0.0-dev.5`; see the full [`ROADMAP.md`](ROADMAP.md) for the remaining stable-release gates.
 
 ## What v10 already does
 
@@ -37,6 +37,7 @@ The stable legacy release remains `v9.0.0`. The current v10 development line is 
 - Explicitly destroys the WebView when the generated Activity closes to reduce retained WebView memory.
 - CI builds and verifies a signed Release APK and signed AAB using a fresh ephemeral keystore.
 - CI validates APK signing with `apksigner`, AAB signing integrity with `jarsigner`, and AAB processing with SHA-256-verified Google `bundletool`.
+- Titanium now runs post-build validation itself before reporting successful APK/AAB output.
 
 ## Simple Mode
 
@@ -61,11 +62,19 @@ HTML5 video and other custom-view content can enter fullscreen using `WebChromeC
 
 ## Signed release quality gate
 
-`10.0.0-dev.4` adds an independent release pipeline test instead of assuming that a successful debug build means release output is safe.
+`10.0.0-dev.4` added an independent release pipeline test instead of assuming that a successful debug build means release output is safe.
 
 Every release-gate CI run creates a new temporary RSA signing keystore with a random masked password. Titanium then generates an API 36 project with release signing enabled and Gradle builds **both** the Release APK and Release AAB. The APK must pass Android Build Tools `apksigner`, the AAB must pass signing-integrity verification, and a SHA-256-pinned `bundletool 1.18.3` must successfully turn the bundle into a universal APK set.
 
-The test keystore and password exist only on the temporary CI runner and are never committed to the repository. This CI gate is separate from the planned in-app post-build validator that will later give the same checks directly to Titanium users.
+The test keystore and password exist only on the temporary CI runner and are never committed to the repository.
+
+## In-app post-build validator
+
+`10.0.0-dev.5` brings release validation into Titanium itself. A Gradle success is no longer enough by itself for Titanium to report a valid output.
+
+For APK output, Titanium checks ZIP integrity and runs Android Build Tools `apksigner`. For AAB output, Titanium checks ZIP integrity, runs SHA-256-pinned Google `bundletool` structural validation and verifies signing integrity with JDK `jarsigner`. AAB signing checks are locale-independent because Titanium also inspects the real JAR signature metadata in `META-INF` instead of relying on a specific English status message.
+
+The Build Engine can provision and repair the managed `bundletool` copy just like the other Titanium-managed components. A corrupted managed bundletool is removed and reacquired with SHA-256 verification.
 
 ## Project Analyzer
 
@@ -94,6 +103,7 @@ For Android compilation, Titanium keeps its build engine under the current user'
 - Android Platform Tools
 - Android API 36 platform
 - Android Build Tools 36.0.0
+- SHA-256-verified Google bundletool for AAB post-build validation
 
 No administrator rights or Android Studio installation are required.
 
@@ -119,13 +129,13 @@ The legacy file `Titanium V9.py` is retained so the published `v9.0.0` release r
 
 Titanium v10 does **not** globally terminate `java.exe`. It also does **not** save keystore passwords in its JSON configuration. Release signing secrets exist only in memory and are passed to Gradle through temporary process environment variables.
 
-Toolchain archives are SHA-256 verified. ZIP imports reject path traversal entries. The preflight analyzer blocks missing or unsafe local web assets before a build starts. Generated WebView permission requests only grant camera/microphone resources explicitly enabled by the project and approved by Android runtime permission prompts. The CI release gate also creates signing credentials dynamically and masks them instead of storing a reusable test password in the repository.
+Toolchain archives are SHA-256 verified. ZIP imports reject path traversal entries. The preflight analyzer blocks missing or unsafe local web assets before a build starts. Generated WebView permission requests only grant camera/microphone resources explicitly enabled by the project and approved by Android runtime permission prompts. CI signing credentials are generated dynamically and masked. Post-build validation fails closed for expected signed artifacts when signing or bundle validation fails.
 
 ## Current status
 
-**v10.0.0-dev.4 — active development**
+**v10.0.0-dev.5 — active development**
 
-The public `v10.0.0-dev.1` prerelease proved the standalone EXE + Portable JDK/Gradle packaging path. dev.2 added UX, diagnostics and build-engine repair. dev.3 added the production-oriented WebView compatibility layer. dev.4 adds signed APK/AAB release validation. Stable `v10.0.0` will only be published after every release criterion in [`ROADMAP.md`](ROADMAP.md) passes.
+The public `v10.0.0-dev.1` prerelease proved the standalone EXE + Portable JDK/Gradle packaging path. dev.2 added UX, diagnostics and build-engine repair. dev.3 added the production-oriented WebView compatibility layer. dev.4 added signed APK/AAB release validation in CI. dev.5 moves APK/AAB post-build validation into Titanium itself. Stable `v10.0.0` will only be published after every release criterion in [`ROADMAP.md`](ROADMAP.md) passes.
 
 ## Author
 

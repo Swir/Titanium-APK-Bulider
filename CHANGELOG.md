@@ -2,6 +2,32 @@
 
 All notable Titanium APK Builder changes are documented here.
 
+## [10.0.0-dev.5] - 2026-09-15
+
+### Added
+- In-app post-build validation for generated APK and AAB artifacts before Titanium reports a successful build.
+- APK verification through Android Build Tools `apksigner`.
+- AAB structural validation through Google `bundletool 1.18.3`.
+- AAB signature-integrity verification through JDK `jarsigner` plus direct signature-entry checks in `META-INF`.
+- Managed `bundletool` provisioning with a pinned SHA-256 digest.
+- Build Engine diagnostics for `apksigner`, `jarsigner` and `bundletool` readiness.
+- Validator unit tests for signed APK, signed AAB, intentionally unsigned AAB, corrupt artifacts and builder/validator integration.
+
+### Architecture
+- Preserved the proven WebView/project generator as `builder_base.py`.
+- `builder.py` is now a thin integration layer that runs artifact validation after the base build completes.
+- This separation reduces the regression surface when release validation evolves.
+
+### Reliability and Security
+- AAB signature detection no longer depends on English `jarsigner` output; Titanium checks real signature metadata entries and the tool exit status.
+- Managed Build Engine repair removes a corrupted managed `bundletool` copy and reacquires a verified one.
+- Post-build validation fails closed for expected signed Release artifacts instead of showing a success message for an invalid output.
+
+### Quality
+- The Windows CI job now launches the built standalone PyInstaller EXE and requires it to remain running.
+- The launch smoke test removes Python from `PATH` and clears `PYTHONHOME` / `PYTHONPATH` for the launched executable.
+- The full dev.5 gate passes Windows EXE launch, API 36 debug APK build and signed Release APK/AAB validation.
+
 ## [10.0.0-dev.4] - 2026-09-15
 
 ### Added

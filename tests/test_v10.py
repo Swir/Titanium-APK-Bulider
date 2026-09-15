@@ -1,11 +1,15 @@
 import json
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from titanium.analyzer import analyze_source
 from titanium.builder import AndroidBuilder
+from titanium.builder_base import AndroidBuilder as BaseAndroidBuilder
 from titanium.core import ConfigStore
+from titanium.validator import ArtifactValidator, ValidationReport
 
 
 class DummyPaths:
@@ -18,6 +22,23 @@ class DummyPaths:
 class DummyToolchain:
     def ready(self):
         return True
+
+
+class DummyValidationToolchain:
+    def apksigner_exe(self):
+        return Path("apksigner.bat")
+
+    def bundletool_jar(self):
+        return Path("bundletool.jar")
+
+    def java_exe(self):
+        return Path("java.exe")
+
+    def jarsigner_exe(self):
+        return Path("jarsigner.exe")
+
+    def env(self):
+        return {}
 
 
 class V10ProjectTests(unittest.TestCase):
@@ -89,8 +110,6 @@ class V10ProjectTests(unittest.TestCase):
             self.assertIn('webView.loadUrl("http://example.com/app")', java)
 
     def test_zip_path_traversal_is_rejected(self):
-        import zipfile
-
         with tempfile.TemporaryDirectory() as td:
             zpath = Path(td) / "bad.zip"
             with zipfile.ZipFile(zpath, "w") as z:
@@ -165,6 +184,86 @@ class V10ProjectTests(unittest.TestCase):
         findings = analyze_source("URL", "http://example.com/app")
         self.assertTrue(any(x.severity == "WARNING" for x in findings))
         self.assertFalse(any(x.severity == "ERROR" for x in findings))
+
+    def test_apk_validator_requires_valid_signature_when_expected(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "app.apk"
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("AndroidManifest.xml", "manifest")
+            validator = ArtifactValidator(DummyValidationToolchain(), lambda *_: None)
+            with patch.object(ArtifactValidator, "_run", return_value=(0, "Verifies\nSigner #1")) as run:
+                report = validator.validate(artifact, expect_signed=True)
+            self.assertTrue(report.signed)
+            self.assertIn("ZIP integrity", report.checks)
+            self.assertIn("APK signature", report.checks)
+            self.assertIn("apksigner.bat", str(run.call_args.args[0][0]))
+
+    def test_aab_validator_checks_bundle_structure_and_signature(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "app.aab"
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("base/manifest/AndroidManifest.xml", "manifest")
+                archive.writestr("META-INF/CERT.SF", "signature-file")
+                archive.writestr("META-INF/CERT.RSA", "signature-block")
+            validator = ArtifactValidator(DummyValidationToolchain(), lambda *_: None)
+            with patch.object(
+                ArtifactValidator,
+                "_run",
+                side_effect=[(0, "Bundle validation successful"), (0, "Podpis zweryfikowany")],
+            ) as run:
+                report = validator.validate(artifact, expect_signed=True)
+            self.assertTrue(report.signed)
+            self.assertIn("bundletool structure", report.checks)
+            self.assertIn("AAB signature integrity", report.checks)
+            self.assertEqual(run.call_count, 2)
+            self.assertIn("validate", run.call_args_list[0].args[0])
+
+    def test_aab_validator_can_report_intentionally_unsigned_output(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "unsigned.aab"
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("base/manifest/AndroidManifest.xml", "manifest")
+            validator = ArtifactValidator(DummyValidationToolchain(), lambda *_: None)
+            with patch.object(
+                ArtifactValidator,
+                "_run",
+                side_effect=[(0, "Bundle validation successful"), (1, "unsigned")],
+            ):
+                report = validator.validate(artifact, expect_signed=False)
+            self.assertFalse(report.signed)
+            self.assertIn("AAB unsigned state accepted", report.checks)
+
+    def test_aab_signature_detection_requires_sf_and_crypto_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "signature.aab"
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("META-INF/ONLY.SF", "signature-file")
+            self.assertFalse(ArtifactValidator._has_jar_signature(artifact))
+            with zipfile.ZipFile(artifact, "a") as archive:
+                archive.writestr("META-INF/ONLY.EC", "signature-block")
+            self.assertTrue(ArtifactValidator._has_jar_signature(artifact))
+
+    def test_validator_rejects_corrupt_android_artifact(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "broken.apk"
+            artifact.write_bytes(b"not-a-zip")
+            validator = ArtifactValidator(DummyValidationToolchain(), lambda *_: None)
+            with self.assertRaises(RuntimeError):
+                validator.validate(artifact)
+
+    def test_builder_wrapper_runs_post_build_validation(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "app.apk"
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("AndroidManifest.xml", "manifest")
+            builder = AndroidBuilder(DummyPaths(td), DummyValidationToolchain(), lambda *_: None)
+            expected = ValidationReport(artifact, "APK", True, ("ZIP integrity", "APK signature"))
+            with patch.object(BaseAndroidBuilder, "build", return_value=artifact), patch.object(
+                ArtifactValidator, "validate", return_value=expected
+            ) as validate:
+                result = builder.build({"build_mode": "Release", "sign_release": True})
+            self.assertEqual(result, artifact)
+            validate.assert_called_once_with(artifact, expect_signed=True)
 
     @staticmethod
     def config(td):
