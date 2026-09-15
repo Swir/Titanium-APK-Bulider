@@ -1,0 +1,6 @@
+APP_NAME = "Titanium APK Builder"
+VERSION = "10.0.0-dev.1"
+ANDROID_API = 36
+BUILD_TOOLS = "36.0.0"
+AGP_VERSION = "9.4.0"
+GRADLE_VERSION = "9.6.0"
