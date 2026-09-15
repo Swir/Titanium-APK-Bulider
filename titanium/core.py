@@ -1,10 +1,11 @@
 from __future__ import annotations
-import json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
+import hashlib, json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
 from pathlib import Path
 from . import APP_NAME, VERSION, ANDROID_API, BUILD_TOOLS, GRADLE_VERSION
 
-JDK_URL = "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse"
+JDK_META_URL = "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jdk&os=windows&vendor=eclipse&heap_size=normal"
 ANDROID_TOOLS_URL = "https://dl.google.com/android/repository/commandlinetools-win-15859902_latest.zip"
+ANDROID_TOOLS_SHA256 = "90ae805d20434428bffcb699c290860f19bb5f66a67e6b330067e3de801fb04a"
 GRADLE_URL = f"https://services.gradle.org/distributions/gradle-{GRADLE_VERSION}-bin.zip"
 ANDROID_LICENSE_URL = "https://developer.android.com/studio/terms"
 
@@ -45,6 +46,20 @@ class ToolchainManager:
             for x in root.rglob(name):
                 if x.is_file(): return x
         return None
+    @staticmethod
+    def _sha256(path: Path):
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""): h.update(chunk)
+        return h.hexdigest().lower()
+    @staticmethod
+    def _json(url: str):
+        req = urllib.request.Request(url, headers={"User-Agent": f"{APP_NAME}/{VERSION}"})
+        with urllib.request.urlopen(req, timeout=60) as r: return json.load(r)
+    @staticmethod
+    def _text(url: str):
+        req = urllib.request.Request(url, headers={"User-Agent": f"{APP_NAME}/{VERSION}"})
+        with urllib.request.urlopen(req, timeout=60) as r: return r.read().decode("utf-8").strip()
     def java_home(self):
         for root in (self.p.portable_jdk, self.p.jdk):
             x = self._find(root, "java.exe")
@@ -83,7 +98,7 @@ class ToolchainManager:
             env["JAVA_HOME"] = str(java); env["PATH"] = str(java/"bin") + os.pathsep + env.get("PATH","")
         if sdk: env["ANDROID_SDK_ROOT"] = env["ANDROID_HOME"] = str(sdk)
         return env
-    def _download(self, url, dest, label):
+    def _download(self, url, dest, label, expected_sha256=None):
         self.emit("log", f"Downloading {label}...")
         req = urllib.request.Request(url, headers={"User-Agent": f"{APP_NAME}/{VERSION}"})
         with urllib.request.urlopen(req, timeout=60) as r, open(dest,"wb") as f:
@@ -93,6 +108,12 @@ class ToolchainManager:
                 if not b: break
                 f.write(b); got += len(b)
                 if total: self.emit("detail", f"{label}: {got*100//total}%")
+        if expected_sha256:
+            actual = self._sha256(dest)
+            if actual != expected_sha256.lower():
+                dest.unlink(missing_ok=True)
+                raise RuntimeError(f"SHA-256 verification failed for {label}")
+            self.emit("log", f"Verified SHA-256: {label}")
     def _extract_by_marker(self, archive, target, marker):
         temp = Path(tempfile.mkdtemp(prefix="titanium-", dir=self.p.root))
         try:
@@ -102,11 +123,18 @@ class ToolchainManager:
             root = marker_path.parent.parent
             shutil.rmtree(target, ignore_errors=True); shutil.copytree(root, target)
         finally: shutil.rmtree(temp, ignore_errors=True)
+    def _jdk_package(self):
+        data = self._json(JDK_META_URL)
+        if not data: raise RuntimeError("No Temurin JDK package metadata returned")
+        package = data[0]["binary"]["package"]
+        return package["link"], package["checksum"]
     def provision(self):
         if not self.java_home():
-            z = self.p.downloads/"jdk.zip"; self._download(JDK_URL,z,"Temurin JDK 21"); self._extract_by_marker(z,self.p.jdk,"java.exe"); z.unlink(missing_ok=True)
+            url, checksum = self._jdk_package()
+            z = self.p.downloads/"jdk.zip"; self._download(url,z,"Temurin JDK 21",checksum); self._extract_by_marker(z,self.p.jdk,"java.exe"); z.unlink(missing_ok=True)
         if not self.gradle_exe():
-            z = self.p.downloads/"gradle.zip"; self._download(GRADLE_URL,z,f"Gradle {GRADLE_VERSION}")
+            checksum = self._text(GRADLE_URL + ".sha256").split()[0]
+            z = self.p.downloads/"gradle.zip"; self._download(GRADLE_URL,z,f"Gradle {GRADLE_VERSION}",checksum)
             temp = Path(tempfile.mkdtemp(prefix="titanium-gradle-", dir=self.p.root))
             try:
                 with zipfile.ZipFile(z) as f: f.extractall(temp)
@@ -114,7 +142,7 @@ class ToolchainManager:
                 shutil.rmtree(self.p.gradle, ignore_errors=True); shutil.copytree(root,self.p.gradle)
             finally: shutil.rmtree(temp, ignore_errors=True); z.unlink(missing_ok=True)
         if not self.sdk_root() or not (self.sdk_root()/"cmdline-tools/latest/bin/sdkmanager.bat").exists():
-            z = self.p.downloads/"android-tools.zip"; self._download(ANDROID_TOOLS_URL,z,"Android command-line tools")
+            z = self.p.downloads/"android-tools.zip"; self._download(ANDROID_TOOLS_URL,z,"Android command-line tools",ANDROID_TOOLS_SHA256)
             temp = Path(tempfile.mkdtemp(prefix="titanium-sdk-", dir=self.p.root))
             try:
                 with zipfile.ZipFile(z) as f: f.extractall(temp)
