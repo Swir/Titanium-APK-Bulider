@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "titanium/core.py"
+      - "titanium/__init__.py"
       - ".github/workflows/v10-managed-engine-smoke.yml"
   push:
     branches:
       - main
     paths:
       - "titanium/core.py"
+      - "titanium/__init__.py"
       - ".github/workflows/v10-managed-engine-smoke.yml"
   workflow_dispatch:
 
@@ -64,7 +66,6 @@ jobs:
           paths = Paths()
           manager = ToolchainManager(paths, emit)
 
-          # Prove that the test starts without discovering system Java/SDK/Gradle.
           assert manager.java_home() is None, f"Unexpected Java before provisioning: {manager.java_home()}"
           assert manager.sdk_root() is None, f"Unexpected Android SDK before provisioning: {manager.sdk_root()}"
           assert manager.gradle_exe() is None, f"Unexpected Gradle before provisioning: {manager.gradle_exe()}"
@@ -119,7 +120,6 @@ jobs:
               print(result.stdout[-3000:])
               assert result.returncode == 0, command
 
-          # Corrupt only managed components, then prove Repair restores them.
           bundletool.write_bytes(b"corrupt-managed-bundletool")
           android_jar = sdk_root / f"platforms/android-{ANDROID_API}/android.jar"
           android_jar.unlink()
