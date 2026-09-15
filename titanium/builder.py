@@ -13,6 +13,7 @@ class AndroidBuilder:
         if int(c["target_sdk"]) != ANDROID_API: raise ValueError(f"Target SDK must be {ANDROID_API} in this v10 build")
         if int(c["min_sdk"]) < 21 or int(c["min_sdk"]) > ANDROID_API: raise ValueError("Invalid Min SDK")
         if int(c["version_code"]) < 1: raise ValueError("Version code must be positive")
+        if not re.fullmatch(r"[0-9A-Za-z._+-]+", c["version_name"]): raise ValueError("Version name contains unsupported characters")
         if c["source_type"] == "URL":
             if not re.match(r"^https?://",c["source"],re.I): raise ValueError("URL must start with http:// or https://")
         elif not c["source"]: raise ValueError("Select an HTML folder or ZIP")
@@ -41,6 +42,50 @@ class AndroidBuilder:
         return dest
     @staticmethod
     def _j(s): return s.replace("\\","\\\\").replace('"','\\"')
+    @staticmethod
+    def _groovy(s): return s.replace("\\", "/").replace("'", "\\'")
+    def _gradle(self,c,pkg):
+        signing = ""
+        signing_line = ""
+        if c["sign_release"] and c["keystore"]:
+            ks=self._groovy(str(Path(c["keystore"]).resolve()))
+            signing=f"""
+    signingConfigs {{
+        release {{
+            storeFile file('{ks}')
+            storePassword System.getenv('TITANIUM_STORE_PASSWORD')
+            keyAlias System.getenv('TITANIUM_KEY_ALIAS')
+            keyPassword System.getenv('TITANIUM_KEY_PASSWORD')
+        }}
+    }}
+"""
+            signing_line="            signingConfig signingConfigs.release\n"
+        return f"""plugins {{
+    id 'com.android.application'
+}}
+
+android {{
+    namespace '{pkg}'
+    compileSdk {ANDROID_API}
+
+    defaultConfig {{
+        applicationId '{pkg}'
+        minSdk {c['min_sdk']}
+        targetSdk {ANDROID_API}
+        versionCode {c['version_code']}
+        versionName '{c['version_name']}'
+    }}
+{signing}
+    buildTypes {{
+        debug {{
+            debuggable true
+        }}
+        release {{
+            minifyEnabled false
+{signing_line}        }}
+    }}
+}}
+"""
     def generate(self,c):
         project=self.p.workspace/"current"; shutil.rmtree(project,ignore_errors=True); project.mkdir(parents=True)
         stage=Path(tempfile.mkdtemp(prefix="web-",dir=self.p.root)); web=None
@@ -53,17 +98,7 @@ class AndroidBuilder:
         (project/"settings.gradle").write_text("pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }\ndependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }\nrootProject.name='TitaniumGeneratedApp'\ninclude ':app'\n",encoding="utf-8")
         (project/"build.gradle").write_text(f"plugins {{ id 'com.android.application' version '{AGP_VERSION}' apply false }}\n",encoding="utf-8")
         (project/"gradle.properties").write_text("org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n",encoding="utf-8")
-        signing=use=""
-        if c["sign_release"] and c["keystore"]:
-            ks=Path(c["keystore"]).resolve().as_posix()
-            signing=f"signingConfigs {{ release {{ storeFile file('{ks}'); storePassword System.getenv('TITANIUM_STORE_PASSWORD'); keyAlias System.getenv('TITANIUM_KEY_ALIAS'); keyPassword System.getenv('TITANIUM_KEY_PASSWORD') }} }}"
-            use="signingConfig signingConfigs.release"
-        gradle=f"""plugins {{ id 'com.android.application' }}
-android {{ namespace '{pkg}'; compileSdk {ANDROID_API}; {signing}
-defaultConfig {{ applicationId '{pkg}'; minSdk {c['min_sdk']}; targetSdk {ANDROID_API}; versionCode {c['version_code']}; versionName '{c['version_name']}' }}
-buildTypes {{ release {{ minifyEnabled false; {use} }} debug {{ debuggable true }} }} }}
-"""
-        (project/"app/build.gradle").write_text(gradle,encoding="utf-8")
+        (project/"app/build.gradle").write_text(self._gradle(c,pkg),encoding="utf-8")
         perms=['<uses-permission android:name="android.permission.INTERNET" />']
         if c["camera"]: perms.append('<uses-permission android:name="android.permission.CAMERA" />')
         if c["microphone"]: perms.append('<uses-permission android:name="android.permission.RECORD_AUDIO" />')
