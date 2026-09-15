@@ -203,11 +203,13 @@ class V10ProjectTests(unittest.TestCase):
             artifact = Path(td) / "app.aab"
             with zipfile.ZipFile(artifact, "w") as archive:
                 archive.writestr("base/manifest/AndroidManifest.xml", "manifest")
+                archive.writestr("META-INF/CERT.SF", "signature-file")
+                archive.writestr("META-INF/CERT.RSA", "signature-block")
             validator = ArtifactValidator(DummyValidationToolchain(), lambda *_: None)
             with patch.object(
                 ArtifactValidator,
                 "_run",
-                side_effect=[(0, "Bundle validation successful"), (0, "jar verified.")],
+                side_effect=[(0, "Bundle validation successful"), (0, "Podpis zweryfikowany")],
             ) as run:
                 report = validator.validate(artifact, expect_signed=True)
             self.assertTrue(report.signed)
@@ -225,11 +227,21 @@ class V10ProjectTests(unittest.TestCase):
             with patch.object(
                 ArtifactValidator,
                 "_run",
-                side_effect=[(0, "Bundle validation successful"), (1, "jar is unsigned")],
+                side_effect=[(0, "Bundle validation successful"), (1, "unsigned")],
             ):
                 report = validator.validate(artifact, expect_signed=False)
             self.assertFalse(report.signed)
             self.assertIn("AAB unsigned state accepted", report.checks)
+
+    def test_aab_signature_detection_requires_sf_and_crypto_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            artifact = Path(td) / "signature.aab"
+            with zipfile.ZipFile(artifact, "w") as archive:
+                archive.writestr("META-INF/ONLY.SF", "signature-file")
+            self.assertFalse(ArtifactValidator._has_jar_signature(artifact))
+            with zipfile.ZipFile(artifact, "a") as archive:
+                archive.writestr("META-INF/ONLY.EC", "signature-block")
+            self.assertTrue(ArtifactValidator._has_jar_signature(artifact))
 
     def test_validator_rejects_corrupt_android_artifact(self):
         with tempfile.TemporaryDirectory() as td:
