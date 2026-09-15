@@ -1,98 +1,72 @@
 <div align="center">
 
-# 📱 Titanium APK Builder
+# Titanium APK Builder
 
-### Build Android APK Projects from HTML, CSS & JavaScript with a GUI
+### Native HTML / ZIP / URL → Android APK / AAB builder for Windows
 
-**Python • CustomTkinter • Apache Cordova • Android SDK • Icons • Splash Screens**
-
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
-![CustomTkinter](https://img.shields.io/badge/GUI-CustomTkinter-8A2BE2)
-![Cordova](https://img.shields.io/badge/Apache-Cordova-E8E8E8?logo=apachecordova&logoColor=black)
-![Android](https://img.shields.io/badge/Output-Android%20APK-3DDC84?logo=android&logoColor=white)
+**Python GUI • Native Android WebView • Gradle • Android SDK • Zero manual toolchain setup**
 
 </div>
 
----
+## v10 development
 
-## 🚀 About
+Titanium v10 is being rebuilt around a simple goal: **a user should not have to install Android Studio, Python, Node.js, Cordova, JDK or Gradle manually just to turn a web project into an Android application.**
 
-**Titanium APK Builder** is a Python desktop automation tool for packaging HTML/CSS/JavaScript projects as Android applications through Apache Cordova. It provides a graphical workflow for common project setup and build tasks instead of requiring every Cordova step to be entered manually.
+The stable legacy release remains `v9.0.0`. The repository now also contains the new `Titanium V10.py` development foundation and the full [`ROADMAP.md`](ROADMAP.md).
 
-The current repository version is `Titanium V9.py` and includes controls for project input, app identity, icon processing, splash-screen handling and Android-oriented build options.
+## What v10 already does
 
-It is designed for users searching for an **HTML to APK builder**, **Cordova GUI**, **web app to Android converter**, **Python APK builder**, **CustomTkinter Android build tool** or a graphical frontend for Cordova project creation.
+- Builds a local HTML/CSS/JavaScript folder into a native Android WebView app.
+- Imports ZIP web projects safely.
+- Creates URL-based Android wrappers.
+- Generates native Gradle/Android project files itself — no template Android Studio project is required.
+- Builds APK or AAB in Debug or Release mode.
+- Defaults to Android 16 / API 36.
+- Supports JKS signing without writing signing passwords to config files.
+- Detects JDK, Android SDK and Gradle.
+- Can provision a private per-user build engine from inside Titanium.
 
----
+## Zero-manual-setup model
 
-## ✨ Features
+The Windows EXE itself is standalone. Python is not required on the user's PC.
 
-| Feature | Description |
-|---|---|
-| 🌐 Web-project input | Package HTML/CSS/JavaScript projects |
-| 📱 Cordova automation | Automates common Cordova setup/build steps |
-| 🎨 Modern GUI | CustomTkinter desktop interface |
-| 🖼️ Icon processing | Prepare application icons with Pillow |
-| 🌅 Splash helper | Assist with Android splash-screen setup |
-| 🧩 Android options | Configure plugin / hardware-oriented options |
-| 🎨 Status bar | Android status-bar theming controls |
-| 🆔 Package generation | Generate an Android package identifier |
-| 🏗️ Build workflow | Debug / Release-oriented build controls |
+For Android compilation, Titanium keeps its build engine under the current user's application-data directory rather than installing tools system-wide. The **Prepare Build Engine** action provisions:
 
----
+- Eclipse Temurin JDK
+- Gradle
+- Android command-line tools
+- Android Platform Tools
+- Android API 36 platform
+- Android Build Tools 36.0.0
 
-## 📋 Prerequisites
+No administrator rights or Android Studio installation are required.
 
-A working Android/Cordova toolchain is required. Depending on your environment this normally includes:
+Android SDK downloads are license-gated. Titanium asks the user to confirm the Android SDK terms before it provisions Google's SDK components.
 
-- Python 3.10+
-- Node.js
-- Apache Cordova
-- JDK
-- Android SDK / Android Studio
-- compatible Gradle tooling
+## Run v10 from source
 
-Python dependencies:
+Python 3.11+ is recommended for development:
 
 ```bash
-pip install customtkinter Pillow
+python "Titanium V10.py"
 ```
 
----
+The v10 application currently uses only the Python standard library.
 
-## 📦 Run
+## Legacy v9
 
-```bash
-git clone https://github.com/Swir/Titanium-APK-Bulider.git
-cd Titanium-APK-Bulider
-pip install customtkinter Pillow
-python "Titanium V9.py"
-```
+The legacy file `Titanium V9.py` is retained so the published `v9.0.0` release remains reproducible. v9 and v10 are intentionally separated while the v10 quality gates are completed.
 
-Select a web-project directory containing `index.html`, configure the application and start the build from the GUI.
+## Security improvements in v10
 
----
+Titanium v10 does **not** globally terminate `java.exe`. It also does **not** save keystore passwords in its JSON configuration. Release signing secrets exist only in memory and are passed to Gradle through temporary process environment variables.
 
-## 🔍 Discoverability
+## Current status
 
-`html to apk builder` • `cordova gui` • `web app to android converter` • `python apk builder` • `customtkinter cordova` • `html css javascript to apk` • `android app builder python` • `cordova desktop gui`
+**v10.0.0-dev.1 — foundation / alpha**
 
----
+It is suitable for development and testing, not yet the final stable v10 release. See [`ROADMAP.md`](ROADMAP.md) for release criteria and remaining work.
 
-## ⚠️ Build Environment Note
+## Author
 
-Android build toolchains evolve frequently. If a build fails, verify compatibility between Cordova, JDK, Android SDK Build Tools, Gradle and the Android platform version configured for the project.
-
----
-
-## 👨‍💻 Author
-
-Developed by **Swir** — [@Swir](https://github.com/Swir)
-
-<div align="center">
-
-### 📱 Web project in • Android build workflow out
-
-⭐ **Star the repository if Titanium APK Builder helps your workflow!**
-
-</div>
+Developed by **Swir**.
