@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, os, shutil, subprocess, tempfile, urllib.request, zipfile
+import json, os, shutil, subprocess, sys, tempfile, urllib.request, zipfile
 from pathlib import Path
 from . import APP_NAME, VERSION, ANDROID_API, BUILD_TOOLS, GRADLE_VERSION
 
@@ -12,6 +12,11 @@ class Paths:
     def __init__(self):
         base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or str(Path.home())
         self.root = Path(base) / "TitaniumAPKBuilder"
+        self.app_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+        self.portable = self.app_dir / "runtime"
+        self.portable_jdk = self.portable / "jdk"
+        self.portable_gradle = self.portable / "gradle"
+        self.portable_sdk = self.portable / "android-sdk"
         self.toolchain = self.root / "toolchain"
         self.jdk = self.toolchain / "jdk"
         self.sdk = self.toolchain / "android-sdk"
@@ -41,22 +46,25 @@ class ToolchainManager:
                 if x.is_file(): return x
         return None
     def java_home(self):
-        x = self._find(self.p.jdk, "java.exe")
-        if x: return x.parent.parent
+        for root in (self.p.portable_jdk, self.p.jdk):
+            x = self._find(root, "java.exe")
+            if x: return x.parent.parent
         env = os.environ.get("JAVA_HOME")
         if env and (Path(env)/"bin/java.exe").exists(): return Path(env)
         x = shutil.which("java")
         return Path(x).resolve().parent.parent if x else None
     def sdk_root(self):
-        if (self.p.sdk/"cmdline-tools/latest/bin/sdkmanager.bat").exists(): return self.p.sdk
+        for root in (self.p.portable_sdk, self.p.sdk):
+            if (root/"cmdline-tools/latest/bin/sdkmanager.bat").exists(): return root
         for key in ("ANDROID_SDK_ROOT","ANDROID_HOME"):
             x = os.environ.get(key)
             if x and Path(x).exists(): return Path(x)
         x = Path(os.environ.get("LOCALAPPDATA", ""))/"Android/Sdk"
         return x if x.exists() else None
     def gradle_exe(self):
-        x = self._find(self.p.gradle, "gradle.bat")
-        if x: return x
+        for root in (self.p.portable_gradle, self.p.gradle):
+            x = self._find(root, "gradle.bat")
+            if x: return x
         x = shutil.which("gradle")
         return Path(x) if x else None
     def status(self):
@@ -95,9 +103,9 @@ class ToolchainManager:
             shutil.rmtree(target, ignore_errors=True); shutil.copytree(root, target)
         finally: shutil.rmtree(temp, ignore_errors=True)
     def provision(self):
-        if not self._find(self.p.jdk, "java.exe"):
+        if not self.java_home():
             z = self.p.downloads/"jdk.zip"; self._download(JDK_URL,z,"Temurin JDK 21"); self._extract_by_marker(z,self.p.jdk,"java.exe"); z.unlink(missing_ok=True)
-        if not self._find(self.p.gradle, "gradle.bat"):
+        if not self.gradle_exe():
             z = self.p.downloads/"gradle.zip"; self._download(GRADLE_URL,z,f"Gradle {GRADLE_VERSION}")
             temp = Path(tempfile.mkdtemp(prefix="titanium-gradle-", dir=self.p.root))
             try:
@@ -106,7 +114,7 @@ class ToolchainManager:
                 shutil.rmtree(self.p.gradle, ignore_errors=True); shutil.copytree(root,self.p.gradle)
             finally: shutil.rmtree(temp, ignore_errors=True); z.unlink(missing_ok=True)
         sm = self.p.sdk/"cmdline-tools/latest/bin/sdkmanager.bat"
-        if not sm.exists():
+        if not self.sdk_root() or not (self.sdk_root()/"cmdline-tools/latest/bin/sdkmanager.bat").exists():
             z = self.p.downloads/"android-tools.zip"; self._download(ANDROID_TOOLS_URL,z,"Android command-line tools")
             temp = Path(tempfile.mkdtemp(prefix="titanium-sdk-", dir=self.p.root))
             try:
@@ -115,9 +123,10 @@ class ToolchainManager:
                 if not (src/"bin/sdkmanager.bat").exists(): raise RuntimeError("Invalid Android tools archive")
                 shutil.rmtree(target, ignore_errors=True); target.parent.mkdir(parents=True,exist_ok=True); shutil.copytree(src,target)
             finally: shutil.rmtree(temp, ignore_errors=True); z.unlink(missing_ok=True)
-        env = self.env(); sm = self.p.sdk/"cmdline-tools/latest/bin/sdkmanager.bat"
+        sdk = self.sdk_root() or self.p.sdk
+        sm = sdk/"cmdline-tools/latest/bin/sdkmanager.bat"; env = self.env(); env["ANDROID_SDK_ROOT"] = env["ANDROID_HOME"] = str(sdk)
         yes = "y\n"*200
-        for args in ([str(sm),f"--sdk_root={self.p.sdk}","--licenses"], [str(sm),f"--sdk_root={self.p.sdk}","platform-tools",f"platforms;android-{ANDROID_API}",f"build-tools;{BUILD_TOOLS}"]):
+        for args in ([str(sm),f"--sdk_root={sdk}","--licenses"], [str(sm),f"--sdk_root={sdk}","platform-tools",f"platforms;android-{ANDROID_API}",f"build-tools;{BUILD_TOOLS}"]):
             r = subprocess.run(args,input=yes,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env,encoding="utf-8",errors="replace")
             self.emit("detail", r.stdout[-4000:])
             if r.returncode: raise RuntimeError("Android SDK provisioning failed")
