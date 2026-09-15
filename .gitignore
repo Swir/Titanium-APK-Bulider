@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.spec
+build/
+dist/
+release/
+*.log
+*.tmp
+*.jks
+*.keystore
+ghost_apex_config.json
+.titanium-apk-builder/
