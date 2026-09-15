@@ -12,7 +12,7 @@ Titanium v10 is a clean transition from the experimental v9/Ghost codebase to a 
 
 ## Current v10 status
 
-The v10 foundation is merged into `main`. End-to-end GitHub Actions tests generate a native Android project targeting API 36 and successfully compile a real debug APK. The Windows job also builds a standalone PyInstaller executable.
+The v10 foundation is merged into `main`. End-to-end GitHub Actions tests generate a native Android project targeting API 36 and successfully compile a real debug APK. The Windows job builds a standalone PyInstaller executable and smoke-launches that executable with Python removed from `PATH`, `PYTHONHOME` and `PYTHONPATH`.
 
 A public development prerelease, **v10.0.0-dev.1**, is available with:
 
@@ -112,7 +112,7 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [x] Signed AAB integrity verification with `jarsigner`.
 - [x] AAB processing test with SHA-256-pinned Google `bundletool` 1.18.3 producing a universal APK set.
 - [x] Unit tests for the in-app post-build validator and builder integration.
-- [ ] Windows EXE launch smoke test.
+- [x] Windows standalone EXE launch smoke test with Python removed from runtime environment paths.
 - [ ] VirusTotal-friendly deterministic packaging where possible.
 - [ ] SBOM and dependency/license manifest.
 
@@ -132,14 +132,14 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 
 v10.0 is considered stable only when all of the following are true:
 
-1. A clean Windows machine can launch Titanium without Python or Android Studio.
+1. A clean Windows machine can launch Titanium without Python or Android Studio. The CI standalone EXE launch test without Python runtime paths now passes; a final clean-machine/Portable release-candidate pass remains.
 2. The user can prepare or repair the build engine from inside Titanium without administrator rights.
 3. A sample local HTML5 project passes preflight and builds to a working debug APK.
 4. The same generated project builds in CI to a signed Release APK and signed AAB, and both pass signing/bundle validation. ✅
 5. Target SDK is API 36 or newer and generated APK/AAB outputs pass Titanium's post-build validator. ✅
 6. No signing password is written to configuration, source files, logs or generated Gradle files.
 7. Titanium never terminates or deletes unrelated Java/Gradle/Android Studio components.
-8. CI validates Python syntax, analyzer tests, generated WebView compatibility, validator tests, a real API 36 debug APK, signed Release APK/AAB validation and the Windows executable build.
+8. CI validates Python syntax, analyzer tests, generated WebView compatibility, validator tests, a real API 36 debug APK, signed Release APK/AAB validation and standalone Windows executable launch. ✅
 9. README, CHANGELOG, migration and troubleshooting documentation match the actual application.
 
 ## After v10.0
