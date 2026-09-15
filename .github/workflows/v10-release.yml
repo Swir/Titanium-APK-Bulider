@@ -4,22 +4,29 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release tag, for example v10.0.0-dev.2
+        description: Release tag, for example v10.0.0-dev.6
         required: true
-        default: v10.0.0-dev.2
+        default: v10.0.0-dev.6
   push:
     tags:
       - "v10.*"
+  pull_request:
+    paths:
+      - "Titanium V10.py"
+      - "titanium/**"
+      - "tests/**"
+      - "THIRD_PARTY_NOTICES.md"
+      - ".github/workflows/v10-release.yml"
 
 concurrency:
-  group: titanium-v10-release
+  group: titanium-v10-release-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  package:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -30,6 +37,8 @@ jobs:
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $v = "${{ inputs.version }}"
+          } elseif ("${{ github.event_name }}" -eq "pull_request") {
+            $v = "v10.0.0-rc-ci"
           } else {
             $v = "${{ github.ref_name }}"
           }
@@ -43,7 +52,7 @@ jobs:
       - name: Test source
         shell: pwsh
         run: |
-          python -m py_compile "Titanium V10.py" titanium/__init__.py titanium/core.py titanium/builder.py
+          python -m py_compile "Titanium V10.py" titanium/__init__.py titanium/core.py titanium/builder.py titanium/builder_base.py titanium/validator.py titanium/analyzer.py
           python -m unittest discover -s tests -v
 
       - name: Build standalone EXE
@@ -53,10 +62,36 @@ jobs:
           python -m pip install "pyinstaller>=6.0"
           pyinstaller --noconfirm --clean --onefile --windowed --name "Titanium-APK-Builder" "Titanium V10.py"
 
+      - name: Smoke-launch standalone EXE without Python runtime paths
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "dist/Titanium-APK-Builder.exe").Path
+          $oldPath = $env:PATH
+          $oldPythonHome = $env:PYTHONHOME
+          $oldPythonPath = $env:PYTHONPATH
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+            Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
+            Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+            $process = Start-Process -FilePath $exe -PassThru
+            Start-Sleep -Seconds 5
+            if ($process.HasExited) {
+              throw "Standalone EXE exited during launch smoke test with code $($process.ExitCode)"
+            }
+            Stop-Process -Id $process.Id -Force
+            Wait-Process -Id $process.Id -ErrorAction SilentlyContinue
+          }
+          finally {
+            $env:PATH = $oldPath
+            if ($null -ne $oldPythonHome) { $env:PYTHONHOME = $oldPythonHome } else { Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue }
+            if ($null -ne $oldPythonPath) { $env:PYTHONPATH = $oldPythonPath } else { Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue }
+          }
+
       - name: Build verified Portable Runtime package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path portable/runtime | Out-Null
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path portable/runtime,portable/licenses | Out-Null
           Copy-Item dist/Titanium-APK-Builder.exe portable/Titanium-APK-Builder.exe
           Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,SECURITY.md,TROUBLESHOOTING.md portable/
 
@@ -81,8 +116,51 @@ jobs:
           $gradleRoot = Get-ChildItem gradle-extract -Directory | Select-Object -First 1
           Copy-Item $gradleRoot.FullName portable/runtime/gradle -Recurse
 
-          if (-not (Get-ChildItem portable/runtime/jdk -Recurse -Filter java.exe | Select-Object -First 1)) { throw "Portable JDK validation failed" }
-          if (-not (Get-ChildItem portable/runtime/gradle -Recurse -Filter gradle.bat | Select-Object -First 1)) { throw "Portable Gradle validation failed" }
+          $bundletoolVersion = "1.18.3"
+          $bundletoolExpected = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29"
+          $bundletoolDir = "portable/runtime/bundletool"
+          New-Item -ItemType Directory -Force -Path $bundletoolDir | Out-Null
+          $bundletoolJar = "$bundletoolDir/bundletool-all-$bundletoolVersion.jar"
+          Invoke-WebRequest -Uri "https://github.com/google/bundletool/releases/download/$bundletoolVersion/bundletool-all-$bundletoolVersion.jar" -OutFile $bundletoolJar
+          $bundletoolActual = (Get-FileHash $bundletoolJar -Algorithm SHA256).Hash.ToLower()
+          if ($bundletoolActual -ne $bundletoolExpected) { throw "bundletool SHA-256 verification failed" }
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/google/bundletool/$bundletoolVersion/LICENSE" -OutFile "portable/licenses/bundletool-LICENSE.txt"
+
+          $java = Get-ChildItem portable/runtime/jdk -Recurse -Filter java.exe | Select-Object -First 1
+          $jarsigner = Get-ChildItem portable/runtime/jdk -Recurse -Filter jarsigner.exe | Select-Object -First 1
+          $gradle = Get-ChildItem portable/runtime/gradle -Recurse -Filter gradle.bat | Select-Object -First 1
+          if (-not $java) { throw "Portable JDK validation failed: java.exe missing" }
+          if (-not $jarsigner) { throw "Portable JDK validation failed: jarsigner.exe missing" }
+          if (-not $gradle) { throw "Portable Gradle validation failed: gradle.bat missing" }
+          if (-not (Test-Path $bundletoolJar)) { throw "Portable bundletool validation failed: JAR missing" }
+          if (-not (Test-Path "portable/licenses/bundletool-LICENSE.txt")) { throw "Portable bundletool validation failed: LICENSE missing" }
+
+          & $java.FullName -jar $bundletoolJar version
+          if ($LASTEXITCODE -ne 0) { throw "Portable bundletool execution test failed" }
+          & $gradle.FullName --version | Select-Object -First 20
+          if ($LASTEXITCODE -ne 0) { throw "Portable Gradle execution test failed" }
+
+          $portableExe = (Resolve-Path "portable/Titanium-APK-Builder.exe").Path
+          $oldPath = $env:PATH
+          $oldPythonHome = $env:PYTHONHOME
+          $oldPythonPath = $env:PYTHONPATH
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+            Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue
+            Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+            $process = Start-Process -FilePath $portableExe -WorkingDirectory (Resolve-Path "portable").Path -PassThru
+            Start-Sleep -Seconds 5
+            if ($process.HasExited) {
+              throw "Portable EXE exited during package smoke test with code $($process.ExitCode)"
+            }
+            Stop-Process -Id $process.Id -Force
+            Wait-Process -Id $process.Id -ErrorAction SilentlyContinue
+          }
+          finally {
+            $env:PATH = $oldPath
+            if ($null -ne $oldPythonHome) { $env:PYTHONHOME = $oldPythonHome } else { Remove-Item Env:PYTHONHOME -ErrorAction SilentlyContinue }
+            if ($null -ne $oldPythonPath) { $env:PYTHONPATH = $oldPythonPath } else { Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue }
+          }
 
           $zip = "Titanium-APK-Builder-$env:VERSION-Portable-Windows-x64.zip"
           Compress-Archive -Path portable/* -DestinationPath $zip -Force
@@ -92,26 +170,62 @@ jobs:
           "$exeHash  Titanium-APK-Builder.exe" | Set-Content "Titanium-APK-Builder.exe.sha256"
           "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Upload release-candidate package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: titanium-v10-release-package
+          path: |
+            dist/Titanium-APK-Builder.exe
+            Titanium-APK-Builder.exe.sha256
+            Titanium-APK-Builder-*-Portable-Windows-x64.zip
+            Titanium-APK-Builder-*-Portable-Windows-x64.zip.sha256
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.version }}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download verified package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: titanium-v10-release-package
+          path: release-assets
+
       - name: Publish GitHub Release
-        shell: pwsh
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $notes = @"
-          Titanium APK Builder v10 development prerelease.
+          set -euo pipefail
+          cd release-assets
+          PORTABLE_ZIP="$(find . -maxdepth 1 -type f -name 'Titanium-APK-Builder-*-Portable-Windows-x64.zip' -printf '%f\n' | head -n 1)"
+          test -n "$PORTABLE_ZIP"
+          NOTES=$(cat <<'EOF'
+          Titanium APK Builder v10 release package.
 
           Standalone EXE: starts without Python or Android Studio.
-          Portable package: also contains SHA-256-verified Temurin JDK 21 and Gradle 9.6.0.
-          Android SDK components are provisioned by Titanium after the user accepts Google's Android SDK license; they are intentionally not bundled in this archive.
+          Portable package: contains the EXE, SHA-256-verified Eclipse Temurin JDK 21, Gradle 9.6.0 and Google bundletool 1.18.3 with its Apache 2.0 license.
+          Android SDK components are provisioned by Titanium only after the user accepts Google's Android SDK license; Android SDK components are intentionally not redistributed inside the Portable archive.
 
-          Development versions containing a hyphen are published as prereleases. Stable v10.0.0 will be published only after all ROADMAP release gates pass.
-          "@
-          if (gh release view $env:VERSION --repo "${{ github.repository }}" 2>$null) {
-            gh release upload $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --clobber --repo "${{ github.repository }}"
-          } else {
-            if ($env:VERSION -match "-") {
-              gh release create $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $env:VERSION" --notes $notes --prerelease --repo "${{ github.repository }}"
-            } else {
-              gh release create $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $env:VERSION" --notes $notes --repo "${{ github.repository }}"
-            }
-          }
+          Development versions containing a hyphen are published as prereleases. Stable v10.0.0 is published only after the ROADMAP stable-release gates pass.
+          EOF
+          )
+          if gh release view "$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$VERSION" Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --clobber --repo "${{ github.repository }}"
+          elif [[ "$VERSION" == *-* ]]; then
+            gh release create "$VERSION" Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $VERSION" --notes "$NOTES" --prerelease --repo "${{ github.repository }}"
+          else
+            gh release create "$VERSION" Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $VERSION" --notes "$NOTES" --repo "${{ github.repository }}"
+          fi
