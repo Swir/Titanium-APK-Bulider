@@ -1,4 +1,5 @@
 name: Titanium v10 Release
+# Development prerelease bootstrap trigger. Stable v10 remains gated by ROADMAP.md.
 
 on:
   workflow_dispatch:
