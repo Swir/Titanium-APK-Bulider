@@ -113,7 +113,6 @@ class ToolchainManager:
                 root = next(x for x in temp.iterdir() if x.is_dir() and x.name.startswith("gradle-"))
                 shutil.rmtree(self.p.gradle, ignore_errors=True); shutil.copytree(root,self.p.gradle)
             finally: shutil.rmtree(temp, ignore_errors=True); z.unlink(missing_ok=True)
-        sm = self.p.sdk/"cmdline-tools/latest/bin/sdkmanager.bat"
         if not self.sdk_root() or not (self.sdk_root()/"cmdline-tools/latest/bin/sdkmanager.bat").exists():
             z = self.p.downloads/"android-tools.zip"; self._download(ANDROID_TOOLS_URL,z,"Android command-line tools")
             temp = Path(tempfile.mkdtemp(prefix="titanium-sdk-", dir=self.p.root))
@@ -125,9 +124,10 @@ class ToolchainManager:
             finally: shutil.rmtree(temp, ignore_errors=True); z.unlink(missing_ok=True)
         sdk = self.sdk_root() or self.p.sdk
         sm = sdk/"cmdline-tools/latest/bin/sdkmanager.bat"; env = self.env(); env["ANDROID_SDK_ROOT"] = env["ANDROID_HOME"] = str(sdk)
-        yes = "y\n"*200
-        for args in ([str(sm),f"--sdk_root={sdk}","--licenses"], [str(sm),f"--sdk_root={sdk}","platform-tools",f"platforms;android-{ANDROID_API}",f"build-tools;{BUILD_TOOLS}"]):
-            r = subprocess.run(args,input=yes,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env,encoding="utf-8",errors="replace")
-            self.emit("detail", r.stdout[-4000:])
-            if r.returncode: raise RuntimeError("Android SDK provisioning failed")
+        # Install only the components Titanium actually needs. Feeding consent here applies
+        # to the requested packages, instead of globally accepting unrelated SDK add-on licenses.
+        args = [str(sm), f"--sdk_root={sdk}", "platform-tools", f"platforms;android-{ANDROID_API}", f"build-tools;{BUILD_TOOLS}"]
+        r = subprocess.run(args,input="y\n"*40,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,env=env,encoding="utf-8",errors="replace")
+        self.emit("detail", r.stdout[-6000:])
+        if r.returncode: raise RuntimeError("Android SDK provisioning failed")
         if not self.ready(): raise RuntimeError("Toolchain readiness check failed")
