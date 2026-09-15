@@ -1,7 +1,9 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from titanium.builder import AndroidBuilder
+from titanium.core import ConfigStore
 
 class DummyPaths:
     def __init__(self, root):
@@ -27,7 +29,11 @@ class V10ProjectTests(unittest.TestCase):
             self.assertTrue((project / "app/src/main/assets/www/index.html").exists())
             self.assertTrue((project / "app/build.gradle").exists())
             self.assertTrue((project / "app/src/main/AndroidManifest.xml").exists())
-            self.assertIn("targetSdk 36", (project / "app/build.gradle").read_text(encoding="utf-8"))
+            gradle = (project / "app/build.gradle").read_text(encoding="utf-8")
+            self.assertIn("targetSdk 36", gradle)
+            self.assertIn("buildTypes {", gradle)
+            self.assertIn("debug {", gradle)
+            self.assertIn("release {", gradle)
 
     def test_zip_path_traversal_is_rejected(self):
         import zipfile
@@ -38,6 +44,27 @@ class V10ProjectTests(unittest.TestCase):
             b = AndroidBuilder(DummyPaths(td), DummyToolchain(), lambda *_: None)
             c = self.config(td); c["source_type"] = "ZIP"; c["source"] = str(zpath)
             with self.assertRaises(ValueError): b.generate(c)
+
+    def test_config_never_persists_signing_passwords(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "config.json"
+            ConfigStore(path).save({"app_name":"Safe","store_password":"store-secret","key_password":"key-secret","key_alias":"release"})
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self.assertNotIn("store_password", data)
+            self.assertNotIn("key_password", data)
+            self.assertEqual(data["key_alias"], "release")
+
+    def test_generated_signing_config_uses_environment_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            web = Path(td) / "web"; web.mkdir(); (web / "index.html").write_text("ok", encoding="utf-8")
+            key = Path(td) / "release.jks"; key.write_bytes(b"placeholder")
+            b = AndroidBuilder(DummyPaths(td), DummyToolchain(), lambda *_: None)
+            c = self.config(td); c.update(source=str(web), build_mode="Release", sign_release=True, keystore=str(key), store_password="TOPSECRET", key_alias="release", key_password="KEYSECRET")
+            project = b.generate(c); gradle = (project / "app/build.gradle").read_text(encoding="utf-8")
+            self.assertIn("TITANIUM_STORE_PASSWORD", gradle)
+            self.assertIn("TITANIUM_KEY_PASSWORD", gradle)
+            self.assertNotIn("TOPSECRET", gradle)
+            self.assertNotIn("KEYSECRET", gradle)
 
     @staticmethod
     def config(td):
