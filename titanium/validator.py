@@ -48,6 +48,24 @@ class ArtifactValidator:
         if broken:
             raise RuntimeError(f"Artifact ZIP integrity failed at entry: {broken}")
 
+    @staticmethod
+    def _has_jar_signature(path: Path):
+        """Detect JAR/AAB signature material without relying on localized jarsigner text."""
+        try:
+            with zipfile.ZipFile(path) as archive:
+                names = {name.upper() for name in archive.namelist()}
+        except (OSError, zipfile.BadZipFile):
+            return False
+        has_signature_file = any(
+            name.startswith("META-INF/") and name.endswith(".SF")
+            for name in names
+        )
+        has_signature_block = any(
+            name.startswith("META-INF/") and name.endswith((".RSA", ".DSA", ".EC"))
+            for name in names
+        )
+        return has_signature_file and has_signature_block
+
     def validate(self, artifact, expect_signed=True):
         path = Path(artifact)
         if not path.is_file():
@@ -115,7 +133,7 @@ class ArtifactValidator:
             raise RuntimeError("JDK jarsigner is missing. Repair the Build Engine and try again.")
         code, output = self._run([jarsigner, "-verify", "-verbose", "-certs", path], env=self.t.env())
         self.emit("detail", output[-6000:])
-        verified = code == 0 and "jar verified" in output.lower() and "jar is unsigned" not in output.lower()
+        verified = code == 0 and self._has_jar_signature(path)
         if verified:
             checks.append("AAB signature integrity")
             return True
