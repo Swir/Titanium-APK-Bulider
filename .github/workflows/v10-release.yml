@@ -45,19 +45,29 @@ jobs:
           python -m pip install "pyinstaller>=6.0"
           pyinstaller --noconfirm --clean --onefile --windowed --name "Titanium-APK-Builder" "Titanium V10.py"
 
-      - name: Build Portable Runtime package
+      - name: Build verified Portable Runtime package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path portable/runtime | Out-Null
           Copy-Item dist/Titanium-APK-Builder.exe portable/Titanium-APK-Builder.exe
-          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md portable/
+          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,SECURITY.md portable/
 
-          Invoke-WebRequest -Uri "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse" -OutFile jdk.zip
+          $jdkMetaUri = "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jdk&os=windows&vendor=eclipse&heap_size=normal"
+          $jdkMeta = Invoke-RestMethod -Uri $jdkMetaUri
+          $jdkPackage = $jdkMeta[0].binary.package
+          Invoke-WebRequest -Uri $jdkPackage.link -OutFile jdk.zip
+          $jdkActual = (Get-FileHash jdk.zip -Algorithm SHA256).Hash.ToLower()
+          $jdkExpected = $jdkPackage.checksum.ToLower()
+          if ($jdkActual -ne $jdkExpected) { throw "Temurin JDK SHA-256 verification failed" }
           Expand-Archive jdk.zip -DestinationPath jdk-extract -Force
           $jdkRoot = Get-ChildItem jdk-extract -Directory | Select-Object -First 1
           Copy-Item $jdkRoot.FullName portable/runtime/jdk -Recurse
 
-          Invoke-WebRequest -Uri "https://services.gradle.org/distributions/gradle-9.6.0-bin.zip" -OutFile gradle.zip
+          $gradleUri = "https://services.gradle.org/distributions/gradle-9.6.0-bin.zip"
+          Invoke-WebRequest -Uri $gradleUri -OutFile gradle.zip
+          $gradleExpected = (Invoke-WebRequest -Uri "$gradleUri.sha256").Content.Trim().Split()[0].ToLower()
+          $gradleActual = (Get-FileHash gradle.zip -Algorithm SHA256).Hash.ToLower()
+          if ($gradleActual -ne $gradleExpected) { throw "Gradle SHA-256 verification failed" }
           Expand-Archive gradle.zip -DestinationPath gradle-extract -Force
           $gradleRoot = Get-ChildItem gradle-extract -Directory | Select-Object -First 1
           Copy-Item $gradleRoot.FullName portable/runtime/gradle -Recurse
@@ -79,7 +89,7 @@ jobs:
           Titanium APK Builder v10 development release.
 
           Standalone EXE: starts without Python or Android Studio.
-          Portable package: also contains Temurin JDK 21 and Gradle 9.6.0.
+          Portable package: also contains SHA-256-verified Temurin JDK 21 and Gradle 9.6.0.
           Android SDK components are provisioned by Titanium after the user accepts Google's Android SDK license; they are intentionally not silently bundled in this archive.
           "@
           if (gh release view $env:VERSION --repo "${{ github.repository }}" 2>$null) {
