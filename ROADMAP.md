@@ -2,9 +2,13 @@
 
 Titanium v10 is the transition from the experimental v9/Ghost codebase to a reproducible, secure, zero-manual-setup Android builder for Windows.
 
-## Stable v10.0.0 candidate
+## Stable v10.0.0 — released ✅
 
-The repository version is now **10.0.0**. All defined technical/documentation stable criteria passed on the preceding development candidate. The final publication rule is stricter: the exact `10.0.0` commit must repeat the normal CI, exact Portable release-package gate and isolated managed Build Engine gate before it can be tagged and published.
+Titanium APK Builder **10.0.0** is now published as the stable v10 release.
+
+The exact stable application line passed the normal Windows/Android CI, exact Portable release-package gate and isolated managed Build Engine Prepare/Repair gate before publication. The final release workflow rebuilt and smoke-tested the standalone EXE and Portable package again before the write-enabled publication job created the public GitHub Release.
+
+Stable release: [`v10.0.0`](https://github.com/Swir/Titanium-APK-Bulider/releases/tag/v10.0.0)
 
 The Portable package contains the standalone EXE, Eclipse Temurin JDK 21, Gradle 9.6.0 and SHA-256-verified Google bundletool 1.18.3 with its Apache 2.0 license. Android SDK components remain license-gated and are provisioned into Titanium's private user-data directory after explicit acceptance; they are intentionally not redistributed in the Portable archive.
 
@@ -79,7 +83,7 @@ Future/non-blocking: additional visual polish, project profiles/recent projects,
 
 Future/non-blocking: further deterministic packaging work, SBOM generation and external malware-scanner reporting.
 
-### M6 — Stable release packaging 🚧
+### M6 — Stable release packaging ✅
 - [x] Automated versioned Windows EXE packaging.
 - [x] Automated versioned Portable ZIP with EXE + JDK + Gradle + bundletool.
 - [x] SHA-256 checksum assets.
@@ -87,15 +91,16 @@ Future/non-blocking: further deterministic packaging work, SBOM generation and e
 - [x] Smoke-launch the EXE from inside Portable without Python runtime paths.
 - [x] Pull requests build the exact release package with read-only permissions.
 - [x] Publication is isolated in a separate write-enabled job.
-- [ ] Exact `10.0.0` stable PR repeats all green gates.
-- [ ] Merge exact `10.0.0` candidate.
-- [ ] Tag `v10.0.0` and publish stable GitHub Release.
+- [x] Exact `10.0.0` stable PR repeated all green gates.
+- [x] Exact `10.0.0` candidate merged to `main`.
+- [x] Tag `v10.0.0` created and stable GitHub Release published.
+- [x] Versioned EXE, Portable ZIP and matching SHA-256 assets published.
 
 Optional/non-blocking: Windows Authenticode signing when a suitable code-signing certificate becomes available.
 
 ## Stable release criteria
 
-All functional criteria are satisfied; publication now depends only on the final exact-version repetition:
+All v10.0.0 release criteria are satisfied:
 
 1. Standalone and Portable EXEs launch without Python runtime paths. ✅
 2. Isolated Prepare/Repair works without system Java/Gradle/Android SDK locations. ✅
@@ -106,8 +111,7 @@ All functional criteria are satisfied; publication now depends only on the final
 7. Titanium does not terminate/delete unrelated development tools. ✅
 8. CI covers source/tests, WebView generation, Android builds, signing, Windows EXE launch, Portable packaging and isolated Prepare/Repair. ✅
 9. README, CHANGELOG, migration, troubleshooting, security and third-party notices match v10 behavior. ✅
-
-**Publication rule:** only the exact `10.0.0` candidate may be tagged `v10.0.0`, and only after all final PR checks are green.
+10. Stable v10.0.0 release assets were rebuilt, verified and published by the controlled release workflow. ✅
 
 ## After v10.0
 
