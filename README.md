@@ -4,114 +4,79 @@
 
 ### Native HTML / ZIP / URL → Android APK / AAB builder for Windows
 
-**Python GUI • Native Android WebView • Gradle • Android SDK • Zero manual toolchain setup**
+**Native Android WebView • Gradle • Android SDK • Standalone Windows EXE • Zero manual toolchain setup**
 
 </div>
 
 ## v10 development
 
-Titanium v10 is being rebuilt around a simple goal: **a user should not have to install Android Studio, Python, Node.js, Cordova, JDK or Gradle manually just to turn a web project into an Android application.**
+Titanium v10 is built around one goal: **a user should not have to manually install Android Studio, Python, Node.js, Cordova, JDK or Gradle just to turn a web project into an Android application.**
 
-The stable legacy release remains `v9.0.0`. The current v10 development line is `10.0.0-dev.5`; see the full [`ROADMAP.md`](ROADMAP.md) for the remaining stable-release gates.
+The stable legacy release remains `v9.0.0`. The current v10 development line is **`10.0.0-dev.6`**; see [`ROADMAP.md`](ROADMAP.md) for the remaining stable-release gates.
 
 ## What v10 already does
 
-- Builds a local HTML/CSS/JavaScript folder into a native Android WebView app.
-- Imports ZIP web projects safely.
-- Creates URL-based Android wrappers.
-- Generates native Gradle/Android project files itself — no template Android Studio project is required.
-- Builds APK or AAB in Debug or Release mode.
-- Defaults to Android 16 / API 36.
-- Supports JKS signing without writing signing passwords to config files.
-- Detects JDK, Android SDK and Gradle.
-- Can provision a private per-user build engine from inside Titanium.
-- Provides **Simple Mode** for fast builds and **Advanced Mode** for full controls.
-- Runs a **Project Analyzer** before build to catch missing assets, unsafe paths and common WebView compatibility problems.
-- Includes a first-run setup wizard and a safe **Repair Build Engine** action.
-- Retries and resumes interrupted managed-toolchain downloads when the server supports HTTP Range requests.
-- Supports WebView runtime permission bridging for camera, microphone and geolocation.
-- Supports HTML file upload controls through the Android file picker.
-- Supports HTTP/HTTPS downloads through Android DownloadManager.
-- Routes `tel:`, `mailto:`, `sms:`, `geo:`, `market:`, `intent:` and other external/custom schemes to Android handlers.
-- Supports HTML5 fullscreen/custom-view content and restores normal WebView navigation after exit.
-- Explicitly destroys the WebView when the generated Activity closes to reduce retained WebView memory.
-- CI builds and verifies a signed Release APK and signed AAB using a fresh ephemeral keystore.
-- CI validates APK signing with `apksigner`, AAB signing integrity with `jarsigner`, and AAB processing with SHA-256-verified Google `bundletool`.
-- Titanium now runs post-build validation itself before reporting successful APK/AAB output.
-
-## Simple Mode
-
-Simple Mode intentionally keeps the workflow short:
-
-1. Choose HTML folder, ZIP or URL.
-2. Set the app name and package name.
-3. Click **Analyze Project**.
-4. Click **Build APK**.
-
-Titanium applies safe defaults for the remaining settings. Switching to Advanced Mode exposes SDK, output format, orientation, permissions and release signing.
+- Builds local HTML/CSS/JavaScript folders, ZIP web projects and URLs into native Android WebView apps.
+- Generates its own Gradle/Android project — no Android Studio template is required.
+- Builds APK or AAB in Debug or Release mode and targets Android 16 / API 36 by default.
+- Supports JKS signing without persisting signing passwords.
+- Provides Simple and Advanced interface modes, first-run setup, Project Analyzer and safe Build Engine repair.
+- Detects or provisions JDK, Gradle, Android SDK components and Google bundletool in user space without administrator rights.
+- Retries/resumes managed toolchain downloads and verifies managed archives with SHA-256.
+- Supports WebView camera, microphone, geolocation, file upload, downloads, external schemes and HTML5 fullscreen.
+- Runs post-build APK/AAB validation before reporting a successful output.
+- Builds and smoke-tests a standalone Windows EXE in CI with Python removed from runtime paths.
+- Builds the exact Portable release package in pull-request CI before it can be merged.
 
 ## WebView compatibility engine
 
-`10.0.0-dev.3` moved generated apps beyond a basic website wrapper.
+Generated apps include Android runtime permission bridges for camera, microphone and location. HTML `<input type="file">` opens the native picker; HTTP/HTTPS downloads use Android `DownloadManager`; non-web schemes such as `tel:`, `mailto:`, `sms:`, `geo:`, `market:` and `intent:` are routed through Android handlers.
 
-Camera and microphone access are bridged through `WebChromeClient.onPermissionRequest` and Android runtime permissions. Location uses the WebView geolocation callback plus Android fine/coarse location permissions. These capabilities are only granted when the corresponding option is enabled in Titanium and the Android user grants the runtime permission.
-
-HTML `<input type="file">` elements open the native Android file picker. HTTP/HTTPS downloads are handed to Android's DownloadManager, including the current WebView cookies and user-agent where available. Non-web schemes are routed to Android through explicit intents, while normal HTTP/HTTPS/file navigation stays inside the WebView.
-
-HTML5 video and other custom-view content can enter fullscreen using `WebChromeClient` and safely return to the generated application. Back navigation first exits fullscreen, then walks WebView history, then closes the Activity.
-
-## Signed release quality gate
-
-`10.0.0-dev.4` added an independent release pipeline test instead of assuming that a successful debug build means release output is safe.
-
-Every release-gate CI run creates a new temporary RSA signing keystore with a random masked password. Titanium then generates an API 36 project with release signing enabled and Gradle builds **both** the Release APK and Release AAB. The APK must pass Android Build Tools `apksigner`, the AAB must pass signing-integrity verification, and a SHA-256-pinned `bundletool 1.18.3` must successfully turn the bundle into a universal APK set.
-
-The test keystore and password exist only on the temporary CI runner and are never committed to the repository.
-
-## In-app post-build validator
-
-`10.0.0-dev.5` brings release validation into Titanium itself. A Gradle success is no longer enough by itself for Titanium to report a valid output.
-
-For APK output, Titanium checks ZIP integrity and runs Android Build Tools `apksigner`. For AAB output, Titanium checks ZIP integrity, runs SHA-256-pinned Google `bundletool` structural validation and verifies signing integrity with JDK `jarsigner`. AAB signing checks are locale-independent because Titanium also inspects the real JAR signature metadata in `META-INF` instead of relying on a specific English status message.
-
-The Build Engine can provision and repair the managed `bundletool` copy just like the other Titanium-managed components. A corrupted managed bundletool is removed and reacquired with SHA-256 verification.
+HTML5 custom-view/fullscreen content is supported, back navigation exits fullscreen before traversing WebView history, and the generated Activity explicitly destroys its WebView during teardown.
 
 ## Project Analyzer
 
-The preflight analyzer runs before Gradle and can detect or report:
+Before Gradle starts, Titanium can report or block problems such as:
 
 - missing `index.html`;
-- missing local `src`, `href` or `poster` assets;
+- missing local HTML assets;
 - unsafe ZIP paths;
-- plain-HTTP URLs and asset references;
-- `file://` references that may fail in Android WebView;
-- PWA manifest presence;
-- service-worker usage;
+- plain-HTTP references;
+- problematic `file://` references;
+- PWA manifest/service-worker usage;
 - unusually large ZIP projects.
 
-Blocking errors stop the build before Android compilation begins.
+Blocking findings stop the build before Android compilation begins.
+
+## Signed release and post-build validation
+
+The CI release gate creates a fresh temporary signing keystore for every run, builds both a signed Release APK and AAB, verifies the APK with Android Build Tools `apksigner`, verifies AAB signing integrity and validates the bundle with SHA-256-pinned Google `bundletool 1.18.3`.
+
+Titanium also performs validation itself after a normal build. APK output is ZIP-integrity checked and passed through `apksigner`. AAB output is ZIP-integrity checked, structurally validated with `bundletool`, and checked for signing integrity with JDK `jarsigner` plus real signature metadata under `META-INF`.
 
 ## Zero-manual-setup model
 
-The Windows EXE itself is standalone. Python is not required on the user's PC.
+The standalone EXE does not require Python on the target PC. The Portable package is built with:
 
-For Android compilation, Titanium keeps its build engine under the current user's application-data directory rather than installing tools system-wide. The **Prepare Build Engine** action provisions:
+- Titanium APK Builder EXE;
+- Eclipse Temurin JDK 21;
+- Gradle 9.6.0;
+- Google bundletool 1.18.3;
+- required documentation, notices and the bundletool Apache 2.0 license.
 
-- Eclipse Temurin JDK
-- Gradle
-- Android command-line tools
-- Android Platform Tools
-- Android API 36 platform
-- Android Build Tools 36.0.0
-- SHA-256-verified Google bundletool for AAB post-build validation
+The release workflow verifies the downloaded JDK, Gradle and bundletool artifacts, confirms `java.exe`, `jarsigner.exe`, `gradle.bat` and bundletool execution, then smoke-launches Titanium from inside the Portable directory with Python removed from `PATH`, `PYTHONHOME` and `PYTHONPATH` before the ZIP is accepted as a release-candidate artifact.
 
-No administrator rights or Android Studio installation are required.
+### Android SDK licensing
 
-Android SDK downloads are license-gated. Titanium asks the user to confirm the Android SDK terms before it provisions Google's SDK components.
+Android SDK components are **not** redistributed in the Portable ZIP. Titanium displays the Android SDK license notice and provisions the command-line tools, platform tools, API 36 platform and Build Tools 36.0.0 into a private per-user directory only after the user accepts the SDK terms.
 
-The **Repair Build Engine** command only checks and repairs Titanium-managed components. It never removes system Java, Android Studio, a system Android SDK or the Portable runtime.
+No Android Studio or administrator rights are required.
 
-## Run v10 from source
+## Release workflow safety
+
+Release packaging and release publication are separate jobs. Pull requests run the exact package-building path with read-only repository permissions. The write-enabled publish job is skipped for pull requests and is available only for explicit release/tag events.
+
+## Run from source
 
 Python 3.11+ is recommended for development:
 
@@ -119,23 +84,23 @@ Python 3.11+ is recommended for development:
 python "Titanium V10.py"
 ```
 
-The v10 application currently uses only the Python standard library.
+The v10 application currently uses only the Python standard library at runtime.
 
-## Legacy v9
+## Security
 
-The legacy file `Titanium V9.py` is retained so the published `v9.0.0` release remains reproducible. v9 and v10 are intentionally separated while the v10 quality gates are completed.
+Titanium v10 does **not** globally terminate `java.exe`, does not save signing passwords in its JSON configuration, rejects ZIP path traversal and passes signing secrets to Gradle only through the process environment. Managed downloads are checksum-verified and Repair Build Engine only modifies Titanium-managed files.
 
-## Security improvements in v10
-
-Titanium v10 does **not** globally terminate `java.exe`. It also does **not** save keystore passwords in its JSON configuration. Release signing secrets exist only in memory and are passed to Gradle through temporary process environment variables.
-
-Toolchain archives are SHA-256 verified. ZIP imports reject path traversal entries. The preflight analyzer blocks missing or unsafe local web assets before a build starts. Generated WebView permission requests only grant camera/microphone resources explicitly enabled by the project and approved by Android runtime permission prompts. CI signing credentials are generated dynamically and masked. Post-build validation fails closed for expected signed artifacts when signing or bundle validation fails.
+See [`SECURITY.md`](SECURITY.md), [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
 
 ## Current status
 
-**v10.0.0-dev.5 — active development**
+**v10.0.0-dev.6 — release-candidate hardening**
 
-The public `v10.0.0-dev.1` prerelease proved the standalone EXE + Portable JDK/Gradle packaging path. dev.2 added UX, diagnostics and build-engine repair. dev.3 added the production-oriented WebView compatibility layer. dev.4 added signed APK/AAB release validation in CI. dev.5 moves APK/AAB post-build validation into Titanium itself. Stable `v10.0.0` will only be published after every release criterion in [`ROADMAP.md`](ROADMAP.md) passes.
+The exact Portable package now passes an automated PR packaging gate. Stable `v10.0.0` will be published only after the remaining stable criteria in [`ROADMAP.md`](ROADMAP.md) pass, especially the isolated managed Build Engine Prepare/Repair test.
+
+## Legacy v9
+
+`Titanium V9.py` is retained so the published `v9.0.0` release remains reproducible while v10 completes its final quality gates.
 
 ## Author
 
