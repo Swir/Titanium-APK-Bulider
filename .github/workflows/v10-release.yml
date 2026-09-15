@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release tag, for example v10.0.0-dev.6
+        description: Release tag, for example v10.0.0
         required: true
-        default: v10.0.0-dev.6
+        default: v10.0.0
   push:
     tags:
       - "v10.*"
@@ -93,7 +93,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path portable/runtime,portable/licenses | Out-Null
           Copy-Item dist/Titanium-APK-Builder.exe portable/Titanium-APK-Builder.exe
-          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,SECURITY.md,TROUBLESHOOTING.md portable/
+          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md,SECURITY.md,TROUBLESHOOTING.md,MIGRATION_V9_TO_V10.md portable/
 
           $jdkMetaUri = "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jdk&os=windows&vendor=eclipse&heap_size=normal"
           $jdkMeta = Invoke-RestMethod -Uri $jdkMetaUri
@@ -162,21 +162,23 @@ jobs:
             if ($null -ne $oldPythonPath) { $env:PYTHONPATH = $oldPythonPath } else { Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue }
           }
 
+          $exeAsset = "Titanium-APK-Builder-$env:VERSION-Windows-x64.exe"
+          Copy-Item dist/Titanium-APK-Builder.exe $exeAsset
+          $exeHash = (Get-FileHash $exeAsset -Algorithm SHA256).Hash.ToLower()
+          "$exeHash  $exeAsset" | Set-Content "$exeAsset.sha256"
+
           $zip = "Titanium-APK-Builder-$env:VERSION-Portable-Windows-x64.zip"
           Compress-Archive -Path portable/* -DestinationPath $zip -Force
-          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  $zip" | Set-Content "$zip.sha256"
-          $exeHash = (Get-FileHash dist/Titanium-APK-Builder.exe -Algorithm SHA256).Hash.ToLower()
-          "$exeHash  Titanium-APK-Builder.exe" | Set-Content "Titanium-APK-Builder.exe.sha256"
-          "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$zipHash  $zip" | Set-Content "$zip.sha256"
 
       - name: Upload release-candidate package artifacts
         uses: actions/upload-artifact@v4
         with:
           name: titanium-v10-release-package
           path: |
-            dist/Titanium-APK-Builder.exe
-            Titanium-APK-Builder.exe.sha256
+            Titanium-APK-Builder-*-Windows-x64.exe
+            Titanium-APK-Builder-*-Windows-x64.exe.sha256
             Titanium-APK-Builder-*-Portable-Windows-x64.zip
             Titanium-APK-Builder-*-Portable-Windows-x64.zip.sha256
           if-no-files-found: error
@@ -210,22 +212,29 @@ jobs:
         run: |
           set -euo pipefail
           cd release-assets
-          PORTABLE_ZIP="$(find . -maxdepth 1 -type f -name 'Titanium-APK-Builder-*-Portable-Windows-x64.zip' -printf '%f\n' | head -n 1)"
-          test -n "$PORTABLE_ZIP"
+          EXE="Titanium-APK-Builder-${VERSION}-Windows-x64.exe"
+          PORTABLE_ZIP="Titanium-APK-Builder-${VERSION}-Portable-Windows-x64.zip"
+          test -f "$EXE"
+          test -f "$EXE.sha256"
+          test -f "$PORTABLE_ZIP"
+          test -f "$PORTABLE_ZIP.sha256"
           NOTES=$(cat <<'EOF'
-          Titanium APK Builder v10 release package.
+          Titanium APK Builder v10 stable release.
 
-          Standalone EXE: starts without Python or Android Studio.
-          Portable package: contains the EXE, SHA-256-verified Eclipse Temurin JDK 21, Gradle 9.6.0 and Google bundletool 1.18.3 with its Apache 2.0 license.
-          Android SDK components are provisioned by Titanium only after the user accepts Google's Android SDK license; Android SDK components are intentionally not redistributed inside the Portable archive.
+          - Standalone Windows EXE: no Python or Android Studio installation required.
+          - Portable Windows package: Titanium EXE + SHA-256-verified Eclipse Temurin JDK 21 + Gradle 9.6.0 + Google bundletool 1.18.3 and its Apache 2.0 license.
+          - Native HTML / ZIP / URL to APK or AAB generation targeting Android API 36.
+          - Debug and signed Release builds, WebView runtime permissions, uploads/downloads, external links and HTML5 fullscreen.
+          - Project Analyzer, managed Build Engine Prepare/Repair, and post-build APK/AAB validation.
+          - Android SDK components are intentionally not redistributed; Titanium provisions them after explicit Android SDK license acceptance.
 
-          Development versions containing a hyphen are published as prereleases. Stable v10.0.0 is published only after the ROADMAP stable-release gates pass.
+          The exact release-package path is smoke-tested in CI before publication. SHA-256 checksum files are included for both downloadable artifacts.
           EOF
           )
           if gh release view "$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$VERSION" Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --clobber --repo "${{ github.repository }}"
+            gh release upload "$VERSION" "$EXE" "$EXE.sha256" "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --clobber --repo "${{ github.repository }}"
           elif [[ "$VERSION" == *-* ]]; then
-            gh release create "$VERSION" Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $VERSION" --notes "$NOTES" --prerelease --repo "${{ github.repository }}"
+            gh release create "$VERSION" "$EXE" "$EXE.sha256" "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $VERSION" --notes "$NOTES" --prerelease --repo "${{ github.repository }}"
           else
-            gh release create "$VERSION" Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $VERSION" --notes "$NOTES" --repo "${{ github.repository }}"
+            gh release create "$VERSION" "$EXE" "$EXE.sha256" "$PORTABLE_ZIP" "$PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $VERSION" --notes "$NOTES" --repo "${{ github.repository }}"
           fi
