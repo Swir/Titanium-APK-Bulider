@@ -2,6 +2,25 @@
 
 All notable Titanium APK Builder changes are documented here.
 
+## [10.0.0-dev.4] - 2026-09-15
+
+### Added
+- Dedicated CI release gate that generates a fresh ephemeral signing keystore for every run.
+- End-to-end signed Release APK and signed Release AAB builds against Android API 36.
+- APK signature verification with Android Build Tools `apksigner`.
+- AAB signature-integrity verification with `jarsigner`.
+- AAB structural/installability validation by generating a universal APK set with Google `bundletool` 1.18.3.
+- SHA-256 verification of the downloaded `bundletool` artifact before use.
+
+### Security
+- CI signing credentials are generated randomly at runtime and masked in GitHub Actions logs.
+- No CI signing password is stored in the repository.
+- The ephemeral signing certificate and keystore exist only on the temporary GitHub Actions runner.
+
+### Quality
+- The release gate proves that the same generated Titanium project can produce both a signed Release APK and a signed AAB.
+- The gate independently validates APK signing, AAB signing integrity and bundle processing instead of relying only on a successful Gradle exit code.
+
 ## [10.0.0-dev.3] - 2026-09-15
 
 ### Added
