@@ -8,6 +8,10 @@ on:
         required: true
         default: v10.0.0-dev.1
   push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/v10-release.yml"
     tags:
       - "v10.*"
 
@@ -24,7 +28,13 @@ jobs:
       - name: Resolve version
         shell: pwsh
         run: |
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") { $v = "${{ inputs.version }}" } else { $v = "${{ github.ref_name }}" }
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $v = "${{ inputs.version }}"
+          } elseif ("${{ github.ref_type }}" -eq "tag") {
+            $v = "${{ github.ref_name }}"
+          } else {
+            $v = "v10.0.0-dev.1"
+          }
           "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Set up Python
@@ -86,14 +96,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $notes = @"
-          Titanium APK Builder v10 development release.
+          Titanium APK Builder v10 development prerelease.
 
           Standalone EXE: starts without Python or Android Studio.
           Portable package: also contains SHA-256-verified Temurin JDK 21 and Gradle 9.6.0.
           Android SDK components are provisioned by Titanium after the user accepts Google's Android SDK license; they are intentionally not silently bundled in this archive.
+
+          This is a development preview. Stable v10.0.0 will be published only after all ROADMAP release gates pass.
           "@
           if (gh release view $env:VERSION --repo "${{ github.repository }}" 2>$null) {
             gh release upload $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --clobber --repo "${{ github.repository }}"
           } else {
-            gh release create $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $env:VERSION" --notes $notes --repo "${{ github.repository }}"
+            if ($env:VERSION -match "-") {
+              gh release create $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $env:VERSION" --notes $notes --prerelease --repo "${{ github.repository }}"
+            } else {
+              gh release create $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $env:VERSION" --notes $notes --repo "${{ github.repository }}"
+            }
           }
