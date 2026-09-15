@@ -16,6 +16,10 @@ on:
     tags:
       - "v10.*"
 
+concurrency:
+  group: titanium-v10-release
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -76,7 +80,8 @@ jobs:
 
           $gradleUri = "https://services.gradle.org/distributions/gradle-9.6.0-bin.zip"
           Invoke-WebRequest -Uri $gradleUri -OutFile gradle.zip
-          $gradleExpected = (Invoke-WebRequest -Uri "$gradleUri.sha256").Content.Trim().Split()[0].ToLower()
+          Invoke-WebRequest -Uri "$gradleUri.sha256" -OutFile gradle.zip.sha256
+          $gradleExpected = (Get-Content gradle.zip.sha256 -Raw).Trim().Split()[0].ToLower()
           $gradleActual = (Get-FileHash gradle.zip -Algorithm SHA256).Hash.ToLower()
           if ($gradleActual -ne $gradleExpected) { throw "Gradle SHA-256 verification failed" }
           Expand-Archive gradle.zip -DestinationPath gradle-extract -Force
