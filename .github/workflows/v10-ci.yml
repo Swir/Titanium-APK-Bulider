@@ -25,25 +25,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Validate Python
         shell: pwsh
         run: |
           python -m py_compile "Titanium V10.py" titanium/__init__.py titanium/core.py titanium/builder.py titanium/analyzer.py
           python -m unittest discover -s tests -v
-
       - name: Build standalone Windows EXE
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.0"
           pyinstaller --noconfirm --clean --onefile --windowed --name "Titanium-APK-Builder-v10" "Titanium V10.py"
-
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
@@ -56,18 +52,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Configure preinstalled Android SDK
         shell: bash
         run: |
@@ -78,12 +71,10 @@ jobs:
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
           yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
-
       - name: Generate sample app
         shell: bash
         run: |
@@ -99,7 +90,6 @@ jobs:
           c={"app_name":"TitaniumCI","package":"com.swir.titaniumci","version_name":"1.0.0","version_code":"1","min_sdk":"24","target_sdk":"36","source_type":"Folder","source":str(web),"output_dir":"/tmp/out","export_format":"APK","build_mode":"Debug","orientation":"unspecified","camera":False,"microphone":False,"location":False,"sign_release":False,"keystore":"","store_password":"","key_alias":"","key_password":""}
           AndroidBuilder(P,T(),lambda *_:None).generate(c)
           PY
-
       - name: Build generated APK
         working-directory: /tmp/titanium-ci/workspace/current
         run: gradle --no-daemon --console=plain assembleDebug
@@ -108,26 +98,21 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI_KEYSTORE: /tmp/titanium-release/release.jks
-      CI_STORE_PASSWORD: titaniumci123
       CI_KEY_ALIAS: titaniumci
-      CI_KEY_PASSWORD: titaniumci123
       BUNDLETOOL_VERSION: 1.18.3
       BUNDLETOOL_SHA256: a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Configure Android SDK
         shell: bash
         run: |
@@ -139,27 +124,20 @@ jobs:
           echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
           yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
-
       - name: Create ephemeral release keystore
         shell: bash
         run: |
           set -euo pipefail
+          PASS="$(openssl rand -hex 24)"
+          echo "::add-mask::$PASS"
+          echo "CI_STORE_PASSWORD=$PASS" >> "$GITHUB_ENV"
+          echo "CI_KEY_PASSWORD=$PASS" >> "$GITHUB_ENV"
           mkdir -p "$(dirname "$CI_KEYSTORE")"
-          keytool -genkeypair \
-            -keystore "$CI_KEYSTORE" \
-            -storepass "$CI_STORE_PASSWORD" \
-            -keypass "$CI_KEY_PASSWORD" \
-            -alias "$CI_KEY_ALIAS" \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 1 \
-            -dname "CN=Titanium CI, OU=CI, O=Swir, L=Oslo, ST=Oslo, C=NO"
-
+          keytool -genkeypair -keystore "$CI_KEYSTORE" -storepass "$PASS" -keypass "$PASS" -alias "$CI_KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Titanium CI, OU=CI, O=Swir, L=Oslo, ST=Oslo, C=NO"
       - name: Generate signed release project
         shell: bash
         run: |
@@ -168,48 +146,16 @@ jobs:
           import os
           from pathlib import Path
           from titanium.builder import AndroidBuilder
-
           class P:
               root = Path('/tmp/titanium-release')
               workspace = root / 'workspace'
-
-          P.root.mkdir(parents=True, exist_ok=True)
-          P.workspace.mkdir(parents=True, exist_ok=True)
-
-          class T:
-              pass
-
-          web = Path('/tmp/titanium-release-web')
-          web.mkdir(exist_ok=True)
-          (web / 'index.html').write_text(
-              '<!doctype html><html><body><h1>Titanium Release CI</h1><input type="file"></body></html>',
-              encoding='utf-8',
-          )
-          c = {
-              "app_name": "TitaniumReleaseCI",
-              "package": "com.swir.titaniumreleaseci",
-              "version_name": "1.0.0",
-              "version_code": "1",
-              "min_sdk": "24",
-              "target_sdk": "36",
-              "source_type": "Folder",
-              "source": str(web),
-              "output_dir": "/tmp/titanium-release/out",
-              "export_format": "APK",
-              "build_mode": "Release",
-              "orientation": "unspecified",
-              "camera": True,
-              "microphone": True,
-              "location": True,
-              "sign_release": True,
-              "keystore": os.environ["CI_KEYSTORE"],
-              "store_password": os.environ["CI_STORE_PASSWORD"],
-              "key_alias": os.environ["CI_KEY_ALIAS"],
-              "key_password": os.environ["CI_KEY_PASSWORD"],
-          }
+          P.root.mkdir(parents=True, exist_ok=True); P.workspace.mkdir(parents=True, exist_ok=True)
+          class T: pass
+          web = Path('/tmp/titanium-release-web'); web.mkdir(exist_ok=True)
+          (web / 'index.html').write_text('<!doctype html><html><body><h1>Titanium Release CI</h1><input type="file"></body></html>', encoding='utf-8')
+          c = {"app_name":"TitaniumReleaseCI","package":"com.swir.titaniumreleaseci","version_name":"1.0.0","version_code":"1","min_sdk":"24","target_sdk":"36","source_type":"Folder","source":str(web),"output_dir":"/tmp/titanium-release/out","export_format":"APK","build_mode":"Release","orientation":"unspecified","camera":True,"microphone":True,"location":True,"sign_release":True,"keystore":os.environ["CI_KEYSTORE"],"store_password":os.environ["CI_STORE_PASSWORD"],"key_alias":os.environ["CI_KEY_ALIAS"],"key_password":os.environ["CI_KEY_PASSWORD"]}
           AndroidBuilder(P, T(), lambda *_: None).generate(c)
           PY
-
       - name: Build signed release APK and AAB
         working-directory: /tmp/titanium-release/workspace/current
         shell: bash
@@ -221,7 +167,6 @@ jobs:
           set -euo pipefail
           gradle --no-daemon --console=plain assembleRelease bundleRelease
           find app/build/outputs -type f \( -name '*.apk' -o -name '*.aab' \) -print
-
       - name: Verify signed APK with apksigner
         working-directory: /tmp/titanium-release/workspace/current
         shell: bash
@@ -230,34 +175,25 @@ jobs:
           APK="$(find app/build/outputs/apk/release -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
           "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-
-      - name: Verify AAB signature with jarsigner
+      - name: Verify AAB signature integrity with jarsigner
         working-directory: /tmp/titanium-release/workspace/current
         shell: bash
         run: |
           set -euo pipefail
           AAB="$(find app/build/outputs/bundle/release -type f -name '*.aab' | head -n 1)"
           test -n "$AAB"
-          jarsigner -verify -strict -certs "$AAB"
-
+          jarsigner -verify -verbose -certs "$AAB" 2>&1 | tee /tmp/titanium-aab-jarsigner.txt
+          grep -F "jar verified" /tmp/titanium-aab-jarsigner.txt
+          if grep -Fqi "jar is unsigned" /tmp/titanium-aab-jarsigner.txt; then exit 1; fi
       - name: Validate AAB with verified bundletool
         working-directory: /tmp/titanium-release/workspace/current
         shell: bash
         run: |
           set -euo pipefail
           BUNDLETOOL="/tmp/bundletool-all-${BUNDLETOOL_VERSION}.jar"
-          curl --fail --location --retry 3 \
-            --output "$BUNDLETOOL" \
-            "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
+          curl --fail --location --retry 3 --output "$BUNDLETOOL" "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
           echo "${BUNDLETOOL_SHA256}  ${BUNDLETOOL}" | sha256sum --check --strict
           AAB="$(find app/build/outputs/bundle/release -type f -name '*.aab' | head -n 1)"
           rm -f /tmp/titanium-release.apks
-          java -jar "$BUNDLETOOL" build-apks \
-            --bundle="$AAB" \
-            --output=/tmp/titanium-release.apks \
-            --mode=universal \
-            --ks="$CI_KEYSTORE" \
-            --ks-pass="pass:$CI_STORE_PASSWORD" \
-            --ks-key-alias="$CI_KEY_ALIAS" \
-            --key-pass="pass:$CI_KEY_PASSWORD"
+          java -jar "$BUNDLETOOL" build-apks --bundle="$AAB" --output=/tmp/titanium-release.apks --mode=universal --ks="$CI_KEYSTORE" --ks-pass="pass:$CI_STORE_PASSWORD" --ks-key-alias="$CI_KEY_ALIAS" --key-pass="pass:$CI_KEY_PASSWORD"
           unzip -l /tmp/titanium-release.apks | grep -F 'universal.apk'
