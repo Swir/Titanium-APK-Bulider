@@ -1,0 +1,89 @@
+name: Titanium v10 Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release tag, for example v10.0.0-dev.1
+        required: true
+        default: v10.0.0-dev.1
+  push:
+    tags:
+      - "v10.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") { $v = "${{ inputs.version }}" } else { $v = "${{ github.ref_name }}" }
+          "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Test source
+        shell: pwsh
+        run: |
+          python -m py_compile "Titanium V10.py" titanium/__init__.py titanium/core.py titanium/builder.py
+          python -m unittest discover -s tests -v
+
+      - name: Build standalone EXE
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pyinstaller>=6.0"
+          pyinstaller --noconfirm --clean --onefile --windowed --name "Titanium-APK-Builder" "Titanium V10.py"
+
+      - name: Build Portable Runtime package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path portable/runtime | Out-Null
+          Copy-Item dist/Titanium-APK-Builder.exe portable/Titanium-APK-Builder.exe
+          Copy-Item README.md,ROADMAP.md,CHANGELOG.md,THIRD_PARTY_NOTICES.md portable/
+
+          Invoke-WebRequest -Uri "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse" -OutFile jdk.zip
+          Expand-Archive jdk.zip -DestinationPath jdk-extract -Force
+          $jdkRoot = Get-ChildItem jdk-extract -Directory | Select-Object -First 1
+          Copy-Item $jdkRoot.FullName portable/runtime/jdk -Recurse
+
+          Invoke-WebRequest -Uri "https://services.gradle.org/distributions/gradle-9.6.0-bin.zip" -OutFile gradle.zip
+          Expand-Archive gradle.zip -DestinationPath gradle-extract -Force
+          $gradleRoot = Get-ChildItem gradle-extract -Directory | Select-Object -First 1
+          Copy-Item $gradleRoot.FullName portable/runtime/gradle -Recurse
+
+          $zip = "Titanium-APK-Builder-$env:VERSION-Portable-Windows-x64.zip"
+          Compress-Archive -Path portable/* -DestinationPath $zip -Force
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zip" | Set-Content "$zip.sha256"
+          $exeHash = (Get-FileHash dist/Titanium-APK-Builder.exe -Algorithm SHA256).Hash.ToLower()
+          "$exeHash  Titanium-APK-Builder.exe" | Set-Content "Titanium-APK-Builder.exe.sha256"
+          "PORTABLE_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @"
+          Titanium APK Builder v10 development release.
+
+          Standalone EXE: starts without Python or Android Studio.
+          Portable package: also contains Temurin JDK 21 and Gradle 9.6.0.
+          Android SDK components are provisioned by Titanium after the user accepts Google's Android SDK license; they are intentionally not silently bundled in this archive.
+          "@
+          if (gh release view $env:VERSION --repo "${{ github.repository }}" 2>$null) {
+            gh release upload $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --clobber --repo "${{ github.repository }}"
+          } else {
+            gh release create $env:VERSION dist/Titanium-APK-Builder.exe Titanium-APK-Builder.exe.sha256 $env:PORTABLE_ZIP "$env:PORTABLE_ZIP.sha256" --target "${{ github.sha }}" --title "Titanium APK Builder $env:VERSION" --notes $notes --repo "${{ github.repository }}"
+          }
