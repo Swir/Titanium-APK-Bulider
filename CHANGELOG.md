@@ -23,6 +23,11 @@ All notable Titanium APK Builder changes are documented here.
 - Managed Build Engine repair removes a corrupted managed `bundletool` copy and reacquires a verified one.
 - Post-build validation fails closed for expected signed Release artifacts instead of showing a success message for an invalid output.
 
+### Quality
+- The Windows CI job now launches the built standalone PyInstaller EXE and requires it to remain running.
+- The launch smoke test removes Python from `PATH` and clears `PYTHONHOME` / `PYTHONPATH` for the launched executable.
+- The full dev.5 gate passes Windows EXE launch, API 36 debug APK build and signed Release APK/AAB validation.
+
 ## [10.0.0-dev.4] - 2026-09-15
 
 ### Added
