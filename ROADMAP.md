@@ -20,7 +20,7 @@ A public development prerelease, **v10.0.0-dev.1**, is available with:
 - Portable Windows ZIP containing the EXE, Temurin JDK 21 and Gradle 9.6.0;
 - SHA-256 files for both deliverables.
 
-The current development line is **v10.0.0-dev.3**. dev.2 added Simple/Advanced UI modes, first-run setup, project preflight analysis, resumable/retrying toolchain downloads, safer readiness checks and Repair Build Engine. dev.3 adds a production-oriented WebView compatibility engine with runtime permissions, upload/download handling, external schemes and HTML5 fullscreen support.
+The current development line is **v10.0.0-dev.4**. dev.2 added Simple/Advanced UI, first-run setup, project preflight, resumable/retrying downloads and Repair Build Engine. dev.3 added the production-oriented WebView compatibility engine. dev.4 adds an independent signed-release quality gate: API 36 Release APK + AAB builds, APK signature verification, AAB signature-integrity verification and SHA-256-pinned bundletool processing.
 
 The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova or Android Studio installation. Android SDK components are prepared inside Titanium after explicit SDK-license consent. Stable `v10.0.0` remains gated by the criteria below.
 
@@ -70,13 +70,14 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [ ] Adaptive launcher icon generator.
 - [ ] PWA manifest import for app name, theme and icons.
 
-### M3 — Release and Play Store pipeline
+### M3 — Release and Play Store pipeline 🚧
 - [x] APK and AAB build modes.
 - [x] Debug / Release variants.
 - [x] JKS release signing without saving passwords.
+- [x] CI proves the same generated project builds to signed Release APK and AAB.
 - [ ] Keystore creation wizard.
-- [ ] `apksigner` verification after APK build.
-- [ ] `bundletool` validation for AAB.
+- [ ] In-app `apksigner` verification after APK build.
+- [ ] In-app `bundletool` validation for AAB.
 - [ ] Automatic version-code management.
 - [ ] Google Play readiness report.
 - [ ] API-level compatibility warnings.
@@ -96,15 +97,18 @@ The Portable ZIP is intended to require no JDK, Gradle, Python, Node.js, Cordova
 - [ ] Multi-language UI with system-language detection and English fallback.
 - [ ] Accessibility and high-DPI testing.
 
-### M5 — Automated quality gate
+### M5 — Automated quality gate 🚧
 - [x] Unit tests for configuration and project generation.
 - [x] ZIP security tests.
 - [x] Signing-secret persistence tests.
 - [x] Project Analyzer tests for valid projects, missing assets and HTTP warnings.
 - [x] Generated WebView compatibility tests for runtime permissions, upload, download, external routing and fullscreen hooks.
 - [x] Generated Gradle project smoke test on GitHub Actions.
-- [x] APK build test against API 36.
-- [ ] Release-signing test with ephemeral CI keystore.
+- [x] Debug APK build test against API 36.
+- [x] Release-signing test with a fresh ephemeral CI keystore.
+- [x] Signed Release APK verification with Android Build Tools `apksigner`.
+- [x] Signed AAB integrity verification with `jarsigner`.
+- [x] AAB processing test with SHA-256-pinned Google `bundletool` 1.18.3 producing a universal APK set.
 - [ ] Windows EXE launch smoke test.
 - [ ] VirusTotal-friendly deterministic packaging where possible.
 - [ ] SBOM and dependency/license manifest.
@@ -128,11 +132,11 @@ v10.0 is considered stable only when all of the following are true:
 1. A clean Windows machine can launch Titanium without Python or Android Studio.
 2. The user can prepare or repair the build engine from inside Titanium without administrator rights.
 3. A sample local HTML5 project passes preflight and builds to a working debug APK.
-4. The same project builds to a signed release APK and AAB.
-5. Target SDK is API 36 or newer and the build passes post-build validation.
+4. The same generated project builds in CI to a signed Release APK and signed AAB, and both pass signing/bundle validation. ✅
+5. Target SDK is API 36 or newer and release artifacts pass post-build validation in CI. ✅
 6. No signing password is written to configuration, source files, logs or generated Gradle files.
 7. Titanium never terminates or deletes unrelated Java/Gradle/Android Studio components.
-8. CI validates Python syntax, analyzer tests, generated WebView compatibility, generated project structure, a real API 36 APK build and the Windows executable build.
+8. CI validates Python syntax, analyzer tests, generated WebView compatibility, a real API 36 debug APK, signed Release APK/AAB validation and the Windows executable build.
 9. README, CHANGELOG, migration and troubleshooting documentation match the actual application.
 
 ## After v10.0
