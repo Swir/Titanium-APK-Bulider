@@ -10,6 +10,17 @@ The exact stable application line passed the normal Windows/Android CI, exact Po
 
 Stable release: [`v10.0.0`](https://github.com/Swir/Titanium-APK-Bulider/releases/tag/v10.0.0)
 
+<!-- SWIR-PROGRESS-SVG-PRO:v1 -->
+<p align="center">
+  <img width="100%" src="assets/readme/progress-mini.svg" alt="Titanium APK Builder v10.0 stable release criteria — 10 of 10 complete" />
+</p>
+
+| Measured scope | Completed | Total | Progress | Status |
+|---|---:|---:|---:|---|
+| v10.0 stable release criteria | **10** | **10** | **100.0%** | **COMPLETE** |
+
+> This 100.0% applies only to the published v10.0 stable release criteria. Post-v10 ideas below remain future work and are not folded into this completed release scope.
+
 The Portable package contains the standalone EXE, Eclipse Temurin JDK 21, Gradle 9.6.0 and SHA-256-verified Google bundletool 1.18.3 with its Apache 2.0 license. Android SDK components remain license-gated and are provisioned into Titanium's private user-data directory after explicit acceptance; they are intentionally not redistributed in the Portable archive.
 
 ## v10.0 milestones
