@@ -14,13 +14,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK
+      - name: Android SDK diagnostics
         shell: bash
         run: |
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager"
-          test -x "$SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la "$ANDROID_HOME/platforms" | tail -20 || true
+          ls -la "$ANDROID_HOME/build-tools" | tail -20 || true
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.6.0'
