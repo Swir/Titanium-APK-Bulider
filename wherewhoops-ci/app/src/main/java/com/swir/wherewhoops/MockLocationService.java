@@ -247,5 +247,5 @@ public class MockLocationService extends Service {
         super.onDestroy();
     }
 
-    @Nullable @Override public android.os.IBinder onBind(Intent i){ return null; }
+    @Override public android.os.IBinder onBind(Intent i){ return null; }
 }
