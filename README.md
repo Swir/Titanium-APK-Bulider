@@ -15,6 +15,12 @@
 
 </div>
 
+## 📸 Screenshot
+
+![Titanium-APK-Bulider application screenshot](docs/screenshots/application.jpg)
+
+Initial build form on Windows, before preparing the Android toolchain.
+
 # Titanium APK Builder
 
 Native HTML / ZIP / URL → Android APK / AAB builder for Windows, with a managed build engine and a published standalone Windows release.
